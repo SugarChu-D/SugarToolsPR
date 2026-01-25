@@ -6,12 +6,6 @@ pub use offset_impl::OffsetType;
 const LCG_MULTIPLIER: u64 = 0x5D588B656C078965u64;
 const LCG_INCREMENT: u64 = 0x269EC3u64;
 
-#[derive(Clone, Copy, Debug)]
-pub struct Lcg {
-    pub state: u64,
-    pub step: u64,
-}
-
 #[derive(Clone, Copy)]
 struct Mat {
     a11: u64, a12: u64,
@@ -49,6 +43,11 @@ fn mat_pow(mut base: Mat, mut exp: u64) -> Mat {
     result
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Lcg {
+    pub state: u64,
+    pub step: u64,
+}
 
 impl Lcg {
     pub fn new(seed: u64) -> Self {
@@ -63,14 +62,6 @@ impl Lcg {
         self.step += 1;
         self.state
     }
-
-    // pub fn advance(&mut self, steps: u64) -> u64 {
-    //     for _ in 0..steps {
-    //         self.next();
-    //     }
-    //     self.state
-    // }
-
     
     pub fn advance(&mut self, n: u64) -> u64 {
         if n == 0 {
@@ -93,50 +84,6 @@ impl Lcg {
         let p = mat_pow(m, n);
         (p.a11, p.a12)
     }
-
-
-
-    /*
-    fn calc_advance_params(a: u64, c: u64, n: u64) -> (u64, u64) {
-        let mult = Self::pow_mod(a, n);
-        let add = Self::calc_geometric_sum(a, c, n);
-        (mult, add)
-    }
-
-    
-    // 幾何級数和の計算: c * (a^0 + a^1 + ... + a^(n-1))
-    fn calc_geometric_sum(a: u64, c: u64, mut k: u64) -> u64 {
-        if k == 0 {
-            return 0;
-        }
-    
-        let mut sum = 0u64;
-        let mut term = c;
-        let mut power = 1u64;
-    
-        while k > 0 {
-            if k & 1 == 1 {
-                sum = sum.wrapping_add(term.wrapping_mul(power));
-            }
-            power = power.wrapping_add(power.wrapping_mul(a));  // power *= (1 + a)
-            term = term.wrapping_mul(1u64.wrapping_add(a));     // term *= (1 + a)
-            k >>= 1;
-        }
-    
-        sum
-    }
-
-    fn pow_mod(mut base: u64, mut exp: u64) -> u64 {
-        let mut result = 1u64;
-        while exp > 0 {
-            if exp & 1 == 1 {
-                result = result.wrapping_mul(base);
-            }
-            base = base.wrapping_mul(base);
-            exp >>= 1;
-        }
-        result
-    }*/
 }
 
 #[cfg(test)]
