@@ -1,6 +1,6 @@
 [workspace]
 members = [
     "rng-core",
-    "cli", "search-infra", "search",
+    "cli", "search", "infra",
 ]
 resolver = "2"
