@@ -3,7 +3,7 @@ use sha1::{Sha1, Digest};
 use crate::models::{GameDate, KeyPresses, DSConfig};
 use crate::lcg::lcg;
 
-pub fn generate_initial_seed0(config: &DSConfig, game_date: &GameDate, key_presses: &KeyPresses) -> u64 {
+pub fn generate_initial_seed0(config: &DSConfig, game_date: &GameDate, key_presses_value: &u16) -> u64 {
     let mut hasher = Sha1::new();
 
     // ゲームバージョンのnazo値をリトルエンディアンで追加 data[0]-data[4]に対応
@@ -82,8 +82,8 @@ pub fn generate_initial_seed0(config: &DSConfig, game_date: &GameDate, key_press
     // data[12]に対応
     // キー入力状態をリトルエンディアンで追加
     #[cfg(debug_assertions)]
-    println!("key_presses: 0x{:04X}", key_presses.keys);
-    hasher.update((key_presses.keys as u32).to_le_bytes());
+    println!("key_presses: 0x{:04X}", key_presses_value);
+    hasher.update((*key_presses_value as u32).to_le_bytes());
 
     // ハッシュを計算
     let result = hasher.finalize();
@@ -100,8 +100,8 @@ pub fn generate_initial_seed0(config: &DSConfig, game_date: &GameDate, key_press
     initial_seed
 }
 
-pub fn generate_initial_seed1(config: &DSConfig, game_date: &GameDate, key_presses: &KeyPresses) -> u64 {
-    let seed0 = generate_initial_seed0(config, game_date, key_presses);
+pub fn generate_initial_seed1(config: &DSConfig, game_date: &GameDate, key_presses_value: &u16) -> u64 {
+    let seed0 = generate_initial_seed0(config, game_date, key_presses_value);
     // LCGでseed1を生成
     let seed1 = lcg::new(seed0).next();
     #[cfg(debug_assertions)]
@@ -138,8 +138,8 @@ mod tests {
         };
 
         // 関数を実行
-        let result0 = generate_initial_seed0(&config, &game_date, &key_presses);
-        let result1 = generate_initial_seed1(&config, &game_date, &key_presses);
+        let result0 = generate_initial_seed0(&config, &game_date, &key_presses.keys);
+        let result1 = generate_initial_seed1(&config, &game_date, &key_presses.keys);
 
         // 結果を確認
         assert_eq!(result0, 0x9B3E7C4BC185AE31, "generated is {:X}", result0);
