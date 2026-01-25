@@ -1,8 +1,9 @@
 
 use sha1::{Sha1, Digest};
 use crate::models::{GameDate, KeyPresses, DSConfig};
+use crate::LCG::LCG;
 
-pub fn generate_initial_seed(config: &DSConfig, game_date: &GameDate, key_presses: &KeyPresses) -> u64 {
+pub fn generate_initial_seed0(config: &DSConfig, game_date: &GameDate, key_presses: &KeyPresses) -> u64 {
     let mut hasher = Sha1::new();
 
     // ゲームバージョンのnazo値をリトルエンディアンで追加 data[0]-data[4]に対応
@@ -99,13 +100,22 @@ pub fn generate_initial_seed(config: &DSConfig, game_date: &GameDate, key_presse
     initial_seed
 }
 
+pub fn generate_initial_seed1(config: &DSConfig, game_date: &GameDate, key_presses: &KeyPresses) -> u64 {
+    let seed0 = generate_initial_seed0(config, game_date, key_presses);
+    // LCGでseed1を生成
+    let seed1 = LCG::new(seed0).next();
+    #[cfg(debug_assertions)]
+    println!("Generated initial seed1: 0x{:016X}", seed1);
+    seed1
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::GameVersion;
 
     #[test]
-    fn test_generate_initial_seed() {
+    fn test_generate_initial_seed0() {
         // テスト用のデータを作成
         let config = DSConfig {
             Version: GameVersion::White2,
@@ -128,9 +138,11 @@ mod tests {
         };
 
         // 関数を実行
-        let result = generate_initial_seed(&config, &game_date, &key_presses);
+        let result0 = generate_initial_seed0(&config, &game_date, &key_presses);
+        let result1 = generate_initial_seed1(&config, &game_date, &key_presses);
 
         // 結果を確認
-        assert_eq!(result, 0x9B3E7C4BC185AE31, "generated is {:X}", result);
+        assert_eq!(result0, 0x9B3E7C4BC185AE31, "generated is {:X}", result0);
+        assert_eq!(result1, 0xA90C98ED53739118, "generated is {:X}", result1);
     }
 }

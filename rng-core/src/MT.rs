@@ -12,12 +12,10 @@ const MATRIX_A: u32 = 0x9908B0DF;
 const TEMPERING_MASK_B: u32 = 0x9D2C5680;
 const TEMPERING_MASK_C: u32 = 0xEFC60000;
 
-// LCG定数
-const LCG_MULTIPLIER: u64 = 0x5D588B656C078965u64;
-const LCG_INCREMENT: u64 = 0x269EC3u64;
-
 // 初期化用定数
 const INIT_MULTIPLIER: u32 = 1812433253u32;
+
+use crate::LCG::LCG;
 
 // テンパリング処理
 fn tempering(mut val: u32) -> u8 {
@@ -73,9 +71,7 @@ pub fn mt_1(seed1: u64, p: u8) -> [u8; 6] {
 
 /// MT_0関数: seed0からseed1をLCGで生成してMT_1を呼ぶ
 pub fn mt_0(seed0: u64, p: u8) -> [u8; 6] {
-    let seed1 = seed0
-        .wrapping_mul(LCG_MULTIPLIER)
-        .wrapping_add(LCG_INCREMENT);
+    let seed1 = LCG::new(seed0).next();
     mt_1(seed1, p)
 }
 
