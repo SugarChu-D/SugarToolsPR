@@ -15,7 +15,7 @@ const TEMPERING_MASK_C: u32 = 0xEFC60000;
 // 初期化用定数
 const INIT_MULTIPLIER: u32 = 1812433253u32;
 
-use crate::LCG::LCG;
+use crate::lcg::LCG;
 
 // テンパリング処理
 fn tempering(mut val: u32) -> u8 {

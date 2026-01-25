@@ -1,0 +1,93 @@
+use crate::lcg::LCG;
+
+const PROBABILITY_TABLE: [[u8; 5]; 6] = [
+    [50, 100, 100, 100, 100],
+    [50,  50, 100, 100, 100],
+    [30,  50, 100, 100, 100],
+    [25,  30,  50, 100, 100],
+    [20,  25,  33,  50, 100],
+    [100, 100, 100, 100, 100],
+];
+
+pub enum OffsetType {
+    Bw1Start,
+    Bw1Continue,
+    BW2Start,
+    BW2Continue,
+    BW2ContinueWithLink,
+}
+
+impl LCG {
+    pub fn offset_seed0(&mut self, offset_type: OffsetType) -> u64 {
+        self.next();
+        self.offset_seed1(offset_type)
+    }
+    
+    pub fn offset_seed1(&mut self, offset_type: OffsetType) -> u64 {
+        match offset_type {
+            // BW1はじめから
+            OffsetType::Bw1Start => {
+                self.PT(3);
+                self.advance(2);
+                // 以降はTID,SID
+            },
+            // BW1続きから
+            OffsetType::Bw1Continue => {
+                self.PT(5);
+            },
+            // BW2はじめから
+            OffsetType::BW2Start => {
+                self.PT(1);
+                self.advance(2);
+                self.PT(1);
+                self.advance(4);
+                self.PT(1);
+                self.advance(2);
+                // チラチーノ用pid
+                self.next();
+                // 以降はTID,SID
+            },
+            // BW2続きから
+            OffsetType::BW2Continue => {
+                self.PT(1);
+                self.advance(3);
+                self.PT(4);
+                self.offset_extra();
+            },
+            // BW2続きから(おもいでリンクあり)
+            OffsetType::BW2ContinueWithLink => {
+                self.PT(1);
+                self.advance(2);
+                self.PT(4);
+                self.offset_extra();
+            },
+        }
+        
+        self.state
+    }
+
+    fn PT(&mut self, counts: u32) {
+        for _ in 0..counts {
+            for i in 0..6 {
+                for j in 0..5 {
+                    let r: u32 = (((self.next() >> 32) * 101) >> 32) as u32;
+                    if r <= PROBABILITY_TABLE[i][j] as u32 {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // BW2特有の追加オフセット処理
+    fn offset_extra(&mut self) {
+        loop{
+            let r1: u32 = (((self.next() >> 32) * 15) >> 32) as u32;
+            let r2: u32 = (((self.next() >> 32) * 15) >> 32) as u32;
+            let r3: u32 = (((self.next() >> 32) * 15) >> 32) as u32;
+            if !(r1 == r2 || r2 == r3 || r1 == r3) {
+                break;
+            }
+        }
+    }
+}

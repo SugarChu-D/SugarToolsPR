@@ -1,7 +1,7 @@
 
 use sha1::{Sha1, Digest};
 use crate::models::{GameDate, KeyPresses, DSConfig};
-use crate::LCG::LCG;
+use crate::lcg::LCG;
 
 pub fn generate_initial_seed0(config: &DSConfig, game_date: &GameDate, key_presses: &KeyPresses) -> u64 {
     let mut hasher = Sha1::new();

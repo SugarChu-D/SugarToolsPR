@@ -1,4 +1,4 @@
 pub mod models;
-pub mod initialseed;
+pub mod initial_seed;
 pub mod MT;
-pub mod LCG;
+pub mod lcg;
