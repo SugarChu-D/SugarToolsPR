@@ -3,7 +3,7 @@ use super::OffsetType;
 
 impl lcg {
     pub fn tid_sid(&mut self, offset_type: OffsetType) -> (u16, u16) {
-        let next: u32 = (self.next() >> 32) as u32;
+        let next: u32 = (self.next() & 0xFFFFFFFFF) as u32;
         // TIDはnext>>32の下16ビット
         let tid: u16 = (next & 0xFFFF) as u16;
         // SIDはnext>>32の上16ビット
@@ -33,6 +33,6 @@ mod tests {
         lcg.offset_seed1(OffsetType::Bw1Start);
         let (tid, _sid) = lcg.tid_sid(OffsetType::Bw1Start);
         assert_eq!(tid, 5683);
-        assert_eq!(_sid, 47868);
+        assert_eq!(_sid, 47868, "SID is {:X}", _sid);
     }
 }

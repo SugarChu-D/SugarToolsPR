@@ -29,7 +29,7 @@ impl lcg {
             // BW1はじめから
             OffsetType::Bw1Start => {
                 self.pt(3);
-                //self.advance(1);
+                self.advance(3);
                 // 以降はTID,SID
             },
             // BW1続きから
@@ -101,9 +101,17 @@ impl lcg {
 mod tests {
     use super::*;
     #[test]
-    fn test_offset_seed() {
+    fn test_offset_BW2Contiue() {
         let mut lcg = lcg::new(0x490CC591E17E7DB7);
         let offset = lcg.offset_seed1(OffsetType::BW2Continue);
         assert_eq!(offset, 55);
+    }
+
+    #[test]
+    fn test_offset_BW1Start() {
+        let mut lcg = lcg::new(0x48B96278DC6233AB);
+        let offset = lcg.offset_seed1(OffsetType::Bw1Start);
+        let (_tid, _sid) = lcg.tid_sid(OffsetType::Bw1Start);
+        assert_eq!(offset, 34);
     }
 }

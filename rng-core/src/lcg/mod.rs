@@ -50,7 +50,7 @@ impl lcg {
                 result = result.wrapping_mul(base);
             }
             base = base.wrapping_mul(base);
-            exp >>= 2;
+            exp >>= 1;
         }
         result
     }
@@ -63,5 +63,11 @@ mod tests {
     fn test_lcg_next() {
         let mut lcg = lcg::new(0x9B3E7C4BC185AE31);
         assert_eq!(lcg.next(), 0xA90C98ED53739118);
+    }
+
+    #[test]
+    fn test_lcg_advance() {
+        let mut lcg = lcg::new(0x9B3E7C4BC185AE31);
+        assert_eq!(lcg.advance(1), 0xA90C98ED53739118, "after 5 steps: {:X}", lcg.state);
     }
 }
