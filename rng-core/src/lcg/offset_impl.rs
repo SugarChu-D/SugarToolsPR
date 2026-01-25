@@ -1,4 +1,4 @@
-use crate::lcg::LCG;
+use super::lcg;
 
 const PROBABILITY_TABLE: [[u8; 5]; 6] = [
     [50, 100, 100, 100, 100],
@@ -9,6 +9,7 @@ const PROBABILITY_TABLE: [[u8; 5]; 6] = [
     [100, 100, 100, 100, 100],
 ];
 
+#[derive(Clone, Copy, Debug)]
 pub enum OffsetType {
     Bw1Start,
     Bw1Continue,
@@ -17,7 +18,7 @@ pub enum OffsetType {
     BW2ContinueWithLink,
 }
 
-impl LCG {
+impl lcg {
     pub fn offset_seed0(&mut self, offset_type: OffsetType) -> u64 {
         self.next();
         self.offset_seed1(offset_type)
@@ -27,21 +28,21 @@ impl LCG {
         match offset_type {
             // BW1はじめから
             OffsetType::Bw1Start => {
-                self.PT(3);
-                self.advance(2);
+                self.pt(3);
+                //self.advance(1);
                 // 以降はTID,SID
             },
             // BW1続きから
             OffsetType::Bw1Continue => {
-                self.PT(5);
+                self.pt(5);
             },
             // BW2はじめから
             OffsetType::BW2Start => {
-                self.PT(1);
+                self.pt(1);
                 self.advance(2);
-                self.PT(1);
+                self.pt(1);
                 self.advance(4);
-                self.PT(1);
+                self.pt(1);
                 self.advance(2);
                 // チラチーノ用pid
                 self.next();
@@ -49,27 +50,31 @@ impl LCG {
             },
             // BW2続きから
             OffsetType::BW2Continue => {
-                self.PT(1);
+                self.pt(1);
                 self.advance(3);
-                self.PT(4);
+                self.pt(4);
                 self.offset_extra();
             },
             // BW2続きから(おもいでリンクあり)
             OffsetType::BW2ContinueWithLink => {
-                self.PT(1);
+                self.pt(1);
                 self.advance(2);
-                self.PT(4);
+                self.pt(4);
                 self.offset_extra();
             },
         }
         
-        self.state
+        self.step
     }
 
-    fn PT(&mut self, counts: u32) {
+    pub fn pt(&mut self, counts: u32) {
         for _ in 0..counts {
             for i in 0..6 {
                 for j in 0..5 {
+                    if PROBABILITY_TABLE[i][j] == 100 {
+                        // 100%なら無条件で
+                        break;
+                    }
                     let r: u32 = (((self.next() >> 32) * 101) >> 32) as u32;
                     if r <= PROBABILITY_TABLE[i][j] as u32 {
                         break;
@@ -80,7 +85,7 @@ impl LCG {
     }
 
     // BW2特有の追加オフセット処理
-    fn offset_extra(&mut self) {
+    pub fn offset_extra(&mut self) {
         loop{
             let r1: u32 = (((self.next() >> 32) * 15) >> 32) as u32;
             let r2: u32 = (((self.next() >> 32) * 15) >> 32) as u32;
@@ -89,5 +94,16 @@ impl LCG {
                 break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_offset_seed() {
+        let mut lcg = lcg::new(0x490CC591E17E7DB7);
+        let offset = lcg.offset_seed1(OffsetType::BW2Continue);
+        assert_eq!(offset, 55);
     }
 }

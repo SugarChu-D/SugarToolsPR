@@ -1,15 +1,17 @@
-mod offset_impl;
+pub mod offset_impl;
+pub mod TID_impl;
+pub use offset_impl::OffsetType;
 
-// LCG定数
+// lcg定数
 const LCG_MULTIPLIER: u64 = 0x5D588B656C078965u64;
 const LCG_INCREMENT: u64 = 0x269EC3u64;
 
 #[derive(Clone, Copy, Debug)]
-pub struct LCG {
-    state: u64,
-    step: u64,
+pub struct lcg {
+    pub state: u64,
+    pub step: u64,
 }
-impl LCG {
+impl lcg {
     pub fn new(seed: u64) -> Self {
         Self { 
             state: seed,
@@ -59,7 +61,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_lcg_next() {
-        let mut lcg = LCG::new(0x9B3E7C4BC185AE31);
+        let mut lcg = lcg::new(0x9B3E7C4BC185AE31);
         assert_eq!(lcg.next(), 0xA90C98ED53739118);
     }
 }
