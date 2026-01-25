@@ -3,4 +3,3 @@ pub mod initial_seed;
 pub mod MT;
 pub mod lcg;
 pub mod LCG;
-pub mod search;

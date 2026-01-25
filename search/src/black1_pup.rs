@@ -1,8 +1,5 @@
-use crate::models::ds_config::DSConfig;
-use crate::models::game_date::GameDate;
-use crate::initial_seed;
-use crate::MT;
-use crate::models::key_presses;
+use rng_core::models::*;
+use rng_core::*;
 
 const TARGET_DATES: [(u8, u8); 6] = [
     (4, 29),
@@ -80,10 +77,8 @@ pub fn search(ds_config: DSConfig) -> Vec<PupSearchResult> {
 #[cfg(test)]
 mod tests {
     use std::{time::Instant};
-
-    use crate::models::{GameVersion};
-
     use super::*;
+    
     
     fn test_black1_pups() {
         let ds_config = DSConfig{
