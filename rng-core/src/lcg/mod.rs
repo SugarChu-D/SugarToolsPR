@@ -26,37 +26,40 @@ impl lcg {
     }
 
     pub fn advance(&mut self, steps: u64) -> u64 {
-        let (mult, add) = Self::calc_advance_params(LCG_MULTIPLIER, LCG_INCREMENT, steps as u64);
-        self.state = self.state.wrapping_mul(mult).wrapping_add(add);
-        self.step += steps;
+        for _ in 0..steps {
+            self.next();
+        }
         self.state
     }
 
+    /*
     fn calc_advance_params(a: u64, c: u64, n: u64) -> (u64, u64) {
         let mult = Self::pow_mod(a, n);
         let add = Self::calc_geometric_sum(a, c, n);
         (mult, add)
     }
 
+    
     // 幾何級数和の計算: c * (a^0 + a^1 + ... + a^(n-1))
-    fn calc_geometric_sum(a: u64, c: u64, mut n: u64) -> u64 {
-        if n == 0 {
+    fn calc_geometric_sum(a: u64, c: u64, mut k: u64) -> u64 {
+        if k == 0 {
             return 0;
         }
-        let mut result = 0u64;
+    
+        let mut sum = 0u64;
         let mut term = c;
-        let mut power: u64 = a;
-
-        while n > 0 {
-            if n & 1 == 1 {
-                result = result.wrapping_add(term);
+        let mut power = 1u64;
+    
+        while k > 0 {
+            if k & 1 == 1 {
+                sum = sum.wrapping_add(term.wrapping_mul(power));
             }
-            term = term.wrapping_mul(power.wrapping_add(1));
-            power = power.wrapping_mul(power);
-            n >>= 1;
+            power = power.wrapping_add(power.wrapping_mul(a));  // power *= (1 + a)
+            term = term.wrapping_mul(1u64.wrapping_add(a));     // term *= (1 + a)
+            k >>= 1;
         }
-
-        result
+    
+        sum
     }
 
     fn pow_mod(mut base: u64, mut exp: u64) -> u64 {
@@ -69,7 +72,7 @@ impl lcg {
             exp >>= 1;
         }
         result
-    }
+    }*/
 }
 
 #[cfg(test)]
@@ -84,6 +87,6 @@ mod tests {
     #[test]
     fn test_lcg_advance() {
         let mut lcg = lcg::new(0x9B3E7C4BC185AE31);
-        assert_eq!(lcg.advance(3), 0x8C9900BCDBC3B20A, "after 5 steps: {:X}", lcg.state);
+        assert_eq!(lcg.advance(3), 0x8C9900BCDBC3B20A, "after 3 steps: {:X}", lcg.state);
     }
 }
