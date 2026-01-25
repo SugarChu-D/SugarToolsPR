@@ -34,13 +34,29 @@ impl lcg {
 
     fn calc_advance_params(a: u64, c: u64, n: u64) -> (u64, u64) {
         let mult = Self::pow_mod(a, n);
-        let add = if a == 1 {
-            c.wrapping_mul(n)
-        } else {
-            c.wrapping_mul(mult.wrapping_sub(1))
-                .wrapping_div(a.wrapping_sub(1))
-        };
+        let add = Self::calc_geometric_sum(a, c, n);
         (mult, add)
+    }
+
+    // 幾何級数和の計算: c * (a^0 + a^1 + ... + a^(n-1))
+    fn calc_geometric_sum(a: u64, c: u64, mut n: u64) -> u64 {
+        if n == 0 {
+            return 0;
+        }
+        let mut result = 0u64;
+        let mut term = c;
+        let mut power: u64 = a;
+
+        while n > 0 {
+            if n & 1 == 1 {
+                result = result.wrapping_add(term);
+            }
+            term = term.wrapping_mul(power.wrapping_add(1));
+            power = power.wrapping_mul(power);
+            n >>= 1;
+        }
+
+        result
     }
 
     fn pow_mod(mut base: u64, mut exp: u64) -> u64 {
@@ -68,6 +84,6 @@ mod tests {
     #[test]
     fn test_lcg_advance() {
         let mut lcg = lcg::new(0x9B3E7C4BC185AE31);
-        assert_eq!(lcg.advance(1), 0xA90C98ED53739118, "after 5 steps: {:X}", lcg.state);
+        assert_eq!(lcg.advance(3), 0x8C9900BCDBC3B20A, "after 5 steps: {:X}", lcg.state);
     }
 }

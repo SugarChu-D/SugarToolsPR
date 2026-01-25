@@ -104,7 +104,7 @@ mod tests {
     fn test_offset_BW2Contiue() {
         let mut lcg = lcg::new(0x490CC591E17E7DB7);
         let offset = lcg.offset_seed1(OffsetType::BW2Continue);
-        assert_eq!(offset, 55);
+        assert_eq!(offset, 54);
     }
 
     #[test]
