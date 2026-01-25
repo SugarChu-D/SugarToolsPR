@@ -1,0 +1,28 @@
+{
+  "ds_configs": {
+    "profile1": {
+      "version": "Black",
+      "timer0": "0xC7A",
+      "is_dslite": false,
+      "mac": "0x0009bf6d93ce"
+    },
+    "profile2": {
+      "version": "White",
+      "timer0": "0xC68",
+      "is_dslite": true,
+      "mac": "0x0009bf6d93ce"
+    },
+    "profile3": {
+      "version": "White2",
+      "timer0": "0x10FA",
+      "is_dslite": false,
+      "mac": 10725259408574
+    },
+    "profile4": {
+      "version": "White2",
+      "timer0": "0x010F7",
+      "is_dslite": true,
+      "mac": "0x0009bf6d93ce"
+    }
+  }
+}

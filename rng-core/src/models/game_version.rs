@@ -1,5 +1,7 @@
 // Gameversion
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GameVersion {
     Black,
     White,
@@ -9,11 +11,11 @@ pub enum GameVersion {
 
 #[derive(Debug, Clone, Copy)]
 pub struct NazoValues {
-    pub nazo1: u8,
-    pub nazo2: u8,
-    pub nazo3: u8,
-    pub nazo4: u8,
-    pub nazo5: u8,
+    pub nazo1: u32,
+    pub nazo2: u32,
+    pub nazo3: u32,
+    pub nazo4: u32,
+    pub nazo5: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
