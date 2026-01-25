@@ -3,6 +3,9 @@ use super::OffsetType;
 
 impl lcg {
     pub fn tid_sid(&mut self, offset_type: OffsetType) -> (u16, u16) {
+        if self.step <= 1 {
+            panic!("LCG state has not been advanced yet. Call offset_seed0 or offset_seed1 first.");
+        }
         let next: u32 = (self.next() >> 32) as u32;
         // TIDはnext>>32の下16ビット
         let tid: u16 = ((next & 0xFFFF) - 1) as u16;
