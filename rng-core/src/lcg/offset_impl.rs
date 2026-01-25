@@ -1,4 +1,4 @@
-use super::lcg;
+use super::Lcg;
 
 const PROBABILITY_TABLE: [[u8; 5]; 6] = [
     [50, 100, 100, 100, 100],
@@ -18,7 +18,7 @@ pub enum OffsetType {
     BW2ContinueWithLink,
 }
 
-impl lcg {
+impl Lcg {
     pub fn offset_seed0(&mut self, offset_type: OffsetType) -> u64 {
         self.next();
         self.offset_seed1(offset_type)
@@ -102,16 +102,16 @@ mod tests {
     use super::*;
     #[test]
     fn test_offset_BW2Contiue() {
-        let mut lcg = lcg::new(0x490CC591E17E7DB7);
-        let offset = lcg.offset_seed1(OffsetType::BW2Continue);
+        let mut seed = Lcg::new(0x490CC591E17E7DB7);
+        let offset = seed.offset_seed1(OffsetType::BW2Continue);
         assert_eq!(offset, 55);
     }
 
     #[test]
     fn test_offset_BW1Start() {
-        let mut lcg = lcg::new(0x48B96278DC6233AB);
-        let offset = lcg.offset_seed1(OffsetType::Bw1Start);
-        let (_tid, _sid) = lcg.tid_sid(OffsetType::Bw1Start);
+        let mut seed = Lcg::new(0x48B96278DC6233AB);
+        let offset = seed.offset_seed1(OffsetType::Bw1Start);
+        let (_tid, _sid) = seed.tid_sid(OffsetType::Bw1Start);
         assert_eq!(offset, 34);
     }
 }

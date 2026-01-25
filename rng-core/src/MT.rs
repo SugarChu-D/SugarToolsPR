@@ -15,7 +15,7 @@ const TEMPERING_MASK_C: u32 = 0xEFC60000;
 // 初期化用定数
 const INIT_MULTIPLIER: u32 = 1812433253u32;
 
-use crate::lcg::lcg;
+use crate::lcg::Lcg;
 
 // テンパリング処理
 fn tempering(mut val: u32) -> u8 {
@@ -71,7 +71,7 @@ pub fn mt_1(seed1: u64, p: u8) -> [u8; 6] {
 
 /// MT_0関数: seed0からseed1をLCGで生成してMT_1を呼ぶ
 pub fn mt_0(seed0: u64, p: u8) -> [u8; 6] {
-    let seed1 = lcg::new(seed0).next();
+    let seed1 = Lcg::new(seed0).next();
     mt_1(seed1, p)
 }
 

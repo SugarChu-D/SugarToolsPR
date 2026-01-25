@@ -1,7 +1,7 @@
 
 use sha1::{Sha1, Digest};
 use crate::models::{GameDate, KeyPresses, DSConfig};
-use crate::lcg::lcg;
+use crate::lcg::Lcg;
 
 pub fn generate_initial_seed0(config: &DSConfig, game_date: &GameDate, key_presses_value: &u16) -> u64 {
     let mut hasher = Sha1::new();
@@ -103,7 +103,7 @@ pub fn generate_initial_seed0(config: &DSConfig, game_date: &GameDate, key_press
 pub fn generate_initial_seed1(config: &DSConfig, game_date: &GameDate, key_presses_value: &u16) -> u64 {
     let seed0 = generate_initial_seed0(config, game_date, key_presses_value);
     // LCGでseed1を生成
-    let seed1 = lcg::new(seed0).next();
+    let seed1 = Lcg::new(seed0).next();
     #[cfg(debug_assertions)]
     println!("Generated initial seed1: 0x{:016X}", seed1);
     seed1

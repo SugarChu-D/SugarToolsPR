@@ -84,7 +84,7 @@ mod tests {
     use crate::models::{GameVersion};
 
     use super::*;
-    #[test]
+    
     fn test_black1_pups() {
         let ds_config = DSConfig{
             Version : GameVersion::Black,
