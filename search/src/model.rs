@@ -1,14 +1,10 @@
-use rng_core::models::KeyPresses;
+use rng_core::models::{GameDate,KeyPresses};
 
 #[derive(Debug, Clone)]
 pub struct SearchResultBase {
-    pub initial_seed: u64,
-    pub year: u16,
-    pub month: u8,
-    pub day: u8,
-    pub hour: u8,
-    pub minute: u8,
-    pub second: u8,
+    pub initial_seed0: u64,
+    pub initial_seed1: u64,
+    pub game_date: GameDate,
     pub key_presses: KeyPresses,
-    pub ivs: [u8; 6],
+    pub ivs_values: [u8; 6],
 }

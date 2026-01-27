@@ -1,5 +1,6 @@
 pub mod offset_impl;
 pub mod TID_impl;
+pub mod Nature_impl;
 pub use offset_impl::OffsetType;
 
 // lcg定数
@@ -83,6 +84,15 @@ impl Lcg {
 
         let p = mat_pow(m, n);
         (p.a11, p.a12)
+    }
+
+    pub fn rand(&mut self, max: u64) -> u32 {
+        let current_state = self.state;
+        let value = ((current_state >> 32)
+        .wrapping_mul(max)
+        >> 32) as u32;
+        self.next();
+        value
     }
 }
 
