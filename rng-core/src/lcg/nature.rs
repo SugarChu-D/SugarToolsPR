@@ -41,7 +41,7 @@ mod tests {
     #[test]
     fn test_get_nature() {
         let mut seed = Lcg::new(0xf9d9dd91248eecb0);
-        seed.advance(213);
+        seed.advance(214);
         let nature = seed.get_nature();
         assert_eq!(nature, Nature(4));
     }
