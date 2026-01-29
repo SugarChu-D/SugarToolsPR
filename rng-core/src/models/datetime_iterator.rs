@@ -21,10 +21,6 @@ impl Date {
             None
         }
     }
-
-    pub fn leap_day(&self) -> bool {
-        self.month == 2 && self.month == 29
-    }
 }
 
 pub fn weekday(year: u8, date: &Date ) -> u32 {
@@ -69,13 +65,8 @@ impl Iterator for DateTimeIterator {
         if self.current_year > self.range.year_range.1 {
             return None;
         }
-
         let result = self.pack();
-
-        if !self.step() {
-            return None;
-        }
-        
+        self.step();
         Some(result)
     }
 }
@@ -94,43 +85,37 @@ impl DateTimeIterator {
         }
     }
 
-    fn step(&mut self) -> bool {
+    fn step(&mut self) {
         // return false when iteration should stop
 
         self.current_second += 1;
         if self.current_second <= self.range.second_range.1 {
-            return true;
+            return;
         }
         self.current_second = self.range.second_range.0;
 
         self.current_minute += 1;
         if self.current_minute <= self.range.minute_range.1 {
-            return true;
+            return;
         }
         self.current_minute = self.range.minute_range.0;
 
         self.current_hour += 1;
         if self.current_hour <= self.range.hour_range.1 {
-            return true;
+            return;
         }
         self.current_hour = self.range.hour_range.0;
 
         if let Some(next_date) = self.current_date.next_day() {
-            // うるう年の判断
-            if self.current_year % 4 == 0 && next_date.leap_day() {
-                next_date.next_day();
-            }
-
+            // うるう年未対応
             if next_date <= self.range.date_end {
                 self.current_date = next_date;
-                return true;
+                return;
             }
         }
 
         self.current_date = self.range.date_start;
         self.current_year += 1;
-
-        self.current_year <= self.range.year_range.1
     }
 
     fn pack(&self) -> u32 {
@@ -163,7 +148,7 @@ mod tests{
         let range = DateRange{
             year_range: (26, 26),
             date_start: Date{ month: 1, day: 30},
-            date_end: Date {month: 2, day: 1},
+            date_end: Date {month: 1, day: 30},
             hour_range: (0,0),
             minute_range: (32, 32),
             second_range: (5, 5)
@@ -172,5 +157,21 @@ mod tests{
         let first = it.into_iter().next().unwrap();
 
         assert_eq!(first, 0x26013005)
+    }
+
+    #[test]
+    fn test_datetime_iterator_end() {
+        let range = DateRange{
+            year_range: (26, 26),
+            date_start: Date{ month: 2, day: 28},
+            date_end: Date {month: 3, day: 1},
+            hour_range: (0,0),
+            minute_range: (32, 32),
+            second_range: (5, 5)
+        };
+        let it = DateTimeIterator::new(range);
+        let v: Vec<_> = it.collect();
+
+        assert_eq!(v.len(), 2);
     }
 }
