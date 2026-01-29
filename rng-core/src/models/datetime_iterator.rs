@@ -107,8 +107,13 @@ impl DateTimeIterator {
         self.current_hour = self.range.hour_range.0;
 
         if let Some(next_date) = self.current_date.next_day() {
-            // うるう年未対応
-            if next_date <= self.range.date_end {
+            // うるう年 current_dateが2/28かつcurrent_yearがうるう年でない時を起点とする
+            if self.current_date.month == 2 && self.current_date.day == 28 && self.current_year % 4 != 0 {
+                self.current_date.month = 3;
+                self.current_date.day = 1;
+                return;
+            }
+            else if next_date <= self.range.date_end {
                 self.current_date = next_date;
                 return;
             }
