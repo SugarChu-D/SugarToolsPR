@@ -1,3 +1,5 @@
+use crate::models::eval_mode::{EvalMode, EvalResult, Evaluator};
+
 // キーのビット位置
 const KEY_A_BIT: u32 = 0;
 const KEY_B_BIT: u32 = 1;
@@ -18,7 +20,6 @@ const fn key_mask(bit: u32) -> u16 {
 }
 
 // 定数定義
-const KEY_NONE: u16 = 0x2fff;
 const KEY_RANGE_START: u16 = 0x2000;
 const KEY_RANGE_END: u16 = 0x2fff;
 
@@ -29,7 +30,9 @@ pub struct KeyPresses {
 }
 
 impl KeyPresses {
-    /// 新規作成（0x2FFF の初期状態）
+    /**
+    生のキー値から生成する(有効評価は行わない)
+     */
     pub const fn new(keys: u16) -> Self {
         Self { keys }
     }
@@ -104,11 +107,6 @@ impl KeyPresses {
             .filter(|&keys| Self::is_valid_raw(keys))
             .map(KeyPresses::new)
     }
-}
-
-trait KeyEvalulator {
-    type Output;
-    fn eval(&self, keys: KeyPresses) -> Self::Output;
 }
 
 #[cfg(test)]
