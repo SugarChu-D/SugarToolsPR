@@ -20,12 +20,4 @@ pub struct Candidate {
     pub ivs: [u8; 6],
 }
 
-//CPU版
-pub struct CpuCandidateGenerator;
-impl CpuCandidateGenerator for CandidateGenerator {
-    fn generate_candidates(...) -> Box<dyn Iterator<Item = Candidate>> {
-        Box::new(
-            InitialSeed
-        )
-    }
-}
+

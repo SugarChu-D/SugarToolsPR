@@ -5,3 +5,7 @@ edition = "2024"
 
 [dependencies]
 rusqlite = { version = "0.32", features = ["bundled"] }
+wgpu = "0.19"
+pollster = "0.3" # async実行用
+bytemuck = { version = "1.14", features = ["derive"] }
+futures-intrusive = "0.5"

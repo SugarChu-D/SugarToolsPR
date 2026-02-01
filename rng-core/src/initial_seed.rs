@@ -1,14 +1,14 @@
 use crate::sha_1::generate_initial_seed0;
-use crate::models::{DSConfig, GameTime, KeyPresses, game_time, key_presses};
-use crate::lcg::{Lcg, lcg_next};
+use crate::models::{DSConfig, GameTime, KeyPresses};
 
 pub struct SeedResultBase {
     pub ds_config: DSConfig,
     pub seed0: u64,
-    pub seed1: u64,
     pub game_time: GameTime,
     pub key_presses: KeyPresses,
 }
+
+
 
 pub struct SeedIter<'a, I>
 where I:Iterator<Item = (GameTime, KeyPresses)>,
@@ -26,9 +26,8 @@ where T: Iterator<Item = (GameTime, KeyPresses)>,
         let (game_time, key_presses) = self.inner.next()?;
 
         let seed0 = generate_initial_seed0(self.config, &game_time, key_presses);
-        let seed1 = lcg_next(seed0);
 
-        Some(SeedResultBase { ds_config:*self.config, seed0, seed1, game_time, key_presses })
+        Some(SeedResultBase { ds_config:*self.config, seed0, game_time, key_presses })
     }
 }
 
