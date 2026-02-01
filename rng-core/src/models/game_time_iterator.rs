@@ -1,5 +1,5 @@
 use super::game_time::*;
-use super::Field_Range::*;
+use super::field_range::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct GameTimeSpec {

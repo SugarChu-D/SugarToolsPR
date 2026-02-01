@@ -95,6 +95,10 @@ impl Lcg {
     }
 }
 
+pub const fn lcg_next(seed: u64) -> u64 {
+    seed.wrapping_mul(LCG_MULTIPLIER).wrapping_add(LCG_INCREMENT)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

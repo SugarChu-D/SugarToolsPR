@@ -8,4 +8,5 @@ pub mod key_presses;
 pub use key_presses::*;
 pub mod game_time_iterator;
 pub use game_time_iterator::*;
-pub mod Field_Range;
+pub mod field_range;
+pub use field_range::*;
