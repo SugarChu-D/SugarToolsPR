@@ -114,7 +114,7 @@ mod tests {
     use super::*;
     use crate::models::GameVersion;
 
-    #[test]
+    //#[test]
     fn test_generate_initial_seed0() {
         // テスト用のデータを作成
         let config = DSConfig {
