@@ -1,5 +1,3 @@
-use crate::models::eval_mode::{EvalMode, EvalResult, Evaluator};
-
 // キーのビット位置
 const KEY_A_BIT: u32 = 0;
 const KEY_B_BIT: u32 = 1;
