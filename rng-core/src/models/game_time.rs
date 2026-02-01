@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct GameDate {
+pub struct GameTime {
     pub year: u8,
     pub month: u8,
     pub day: u8,
@@ -8,7 +8,7 @@ pub struct GameDate {
     pub second: u8,
 }
 
-impl GameDate {
+impl GameTime {
     pub fn new(year: u8, month: u8, day: u8, hour: u8, minute: u8, second: u8) -> Self {
         Self {
             year,
@@ -27,7 +27,7 @@ impl GameDate {
 
         if m < 3 {
             m += 12;
-            y = if y == 0 { 93 } else { y - 1 }; // Adjust for year wrap-around
+            y = if y == 0 { 94 } else { y - 1 }; // Adjust for year wrap-around
         }
 
         let weekday = (self.day as i32 + ((13 * m + 8) / 5) + y + (y >> 2)) % 7;
@@ -35,12 +35,12 @@ impl GameDate {
         weekday as u8 // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
     }
 
-    pub fn get_days_in_month(month: u8, year: u8) -> u8 {
-        match month {
+    pub fn days_in_month(&self) -> u8 {
+        match self.month {
             1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
             4 | 6 | 9 | 11 => 30,
             2 => {
-                if year % 4 == 0 && year % 100 != 0 {
+                if self.year % 4 == 0 && self.year % 100 != 0 {
                     29
                 } else {
                     28
@@ -50,25 +50,46 @@ impl GameDate {
         }
     }
 
-    pub fn add_days(&mut self, days: u32) {
-        let mut total_days = days as u8;
-        while total_days > 0 {
-            let days_in_month = GameDate::get_days_in_month(self.month, self.year);
-            if self.day + total_days <= days_in_month {
-                self.day += total_days;
-                break;
-            } else {
-                total_days -= days_in_month - self.day + 1;
-                self.day = 1;
-                if self.month == 12 {
-                    self.month = 1;
-                    self.year = (self.year + 1) % 100; // Wrap around after year 99
-                } else {
-                    self.month += 1;
-                }
-            }
+    pub fn add_second(&mut self) {
+        self.second += 1;
+        if self.second >= 60 {
+            self.second = 0;
+            self.add_minute();
         }
     }
+
+    pub fn add_minute(&mut self) {
+        self.minute += 1;
+        if self.minute >= 60 {
+            self.minute = 0;
+            self.add_hour();
+        }
+    }
+
+    pub fn add_hour(&mut self) {
+        self.hour += 1;
+        if self.hour >= 24 {
+            self.hour = 0;
+            self.add_day();
+        }
+    }
+
+    pub fn add_day(&mut self) {
+        self.day += 1;
+        if self.day > self.days_in_month() {
+            self.day = 1;
+            self.add_month();
+        }
+    }
+
+    pub fn add_month(&mut self) {
+        self.month += 1;
+        if self.month > 12 {
+            self.month = 1;
+            self.year += 1;
+        }
+    }
+
 
     pub fn get_date8_format(&self) -> u32 {
         // 10進数を16進数に変換する処理を直接ビット演算で行う
@@ -98,10 +119,9 @@ mod tests {
 
     #[test]
     fn test_game_date() {
-        let mut date = GameDate::new(26, 1, 24, 23, 59, 59);
+        let mut date = GameTime::new(26, 1, 24, 23, 59, 59);
         assert_eq!(date.weekday(), 6); // Saturday
         assert_eq!(date.get_date8_format(), 0x26012406);
-        date.add_days(1);
         assert_eq!(date.year, 26);
     }
 }
