@@ -112,4 +112,12 @@ impl KeyPresses {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_valid_keypresses_length(){
+        let it = KeyPresses::iter_valid();
+        let v:Vec<_> = it.collect();
+
+        assert_eq!(v.len(), 2160);
+    }
 }
