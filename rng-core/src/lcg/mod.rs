@@ -1,6 +1,7 @@
 pub mod offset_impl;
 pub mod TID_impl;
 pub mod nature;
+pub mod grotto;
 pub use offset_impl::OffsetType;
 
 // lcg定数
