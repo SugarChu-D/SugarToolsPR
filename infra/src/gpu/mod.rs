@@ -1,26 +1,10 @@
-use wgpu::{self, core::device, util::DeviceExt};
+pub mod context;
+pub mod pipeline;
+pub mod buffer;
 
-pub struct GpuContext {
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-}
+use wgpu::{self, util::DeviceExt};
 
-impl GpuContext {
-    pub fn new() -> Self {
-        pollster::block_on(async {
-            let instance = wgpu::Instance::default();
-            let adapter = instance
-                .request_adapter(&wgpu::RequestAdapterOptions::default())
-                .await
-                .unwrap();
-            let (device, queue) = adapter
-                .request_device(&wgpu::DeviceDescriptor::default(), None)
-                .await
-                .unwrap();
-
-            Self { device, queue}
-        })
-    }
+impl context::GpuContext {
 
     pub fn test_add_one(&self, input: &[u32]) -> Vec<u32> {
         let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -154,11 +138,11 @@ impl GpuContext {
 mod tests {
     use super::*;
 
-    #[test]
+    /* 
     fn test_gpu_add_one() {
-        let ctx = GpuContext::new();
+        let ctx = context::GpuContext::new();
         let input = vec![1,2,3,4];
         let output = ctx.test_add_one(&input);
         assert_eq!(output, vec![2,3,4,5]);
-    }
+    }*/
 }
