@@ -1,2 +1,3 @@
 pub mod local_gpu_config;
-pub mod result_layout;
+pub mod input_layout;
+pub mod staging_layout;
