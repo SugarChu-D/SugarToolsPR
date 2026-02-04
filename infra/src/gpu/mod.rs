@@ -1,11 +1,13 @@
 pub mod context;
-pub mod pipeline;
-pub mod buffer;
+pub mod pipeline_factory;
+pub mod buffer_pool;
+pub mod bind_layout_templates;
 
 use wgpu::{self, util::DeviceExt};
 
 impl context::GpuContext {
 
+    #[cfg(test)]
     pub fn test_add_one(&self, input: &[u32]) -> Vec<u32> {
         let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Add One Shader"),
@@ -138,11 +140,12 @@ impl context::GpuContext {
 mod tests {
     use super::*;
 
-    /* 
+    /*
+    #[test]
     fn test_gpu_add_one() {
         let ctx = context::GpuContext::new();
         let input = vec![1,2,3,4];
-        let output = ctx.test_add_one(&input);
+        let output = ctx.await.test_add_one(&input);
         assert_eq!(output, vec![2,3,4,5]);
     }*/
 }

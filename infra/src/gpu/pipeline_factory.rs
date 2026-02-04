@@ -1,0 +1,30 @@
+pub struct PipelineFactory<'a> {
+    device: &'a wgpu::Device,
+}
+
+impl<'a> PipelineFactory<'a> {
+    pub fn new(device: &'a wgpu::Device) -> Self {
+        Self { device }
+    }
+
+    pub fn create_compute(
+        &self,
+        shader: &wgpu::ShaderModule,
+        layout: &wgpu::BindGroupLayout,
+        entry: &str,
+    ) -> wgpu::ComputePipeline {
+        let pipeline_layout =
+            self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                bind_group_layouts: &[layout],
+                push_constant_ranges: &[],
+            });
+
+        self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: None,
+            layout: Some(&pipeline_layout),
+            module: shader,
+            entry_point: entry,
+        })
+    }
+}
