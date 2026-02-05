@@ -1,4 +1,4 @@
-use crate::models::game_version::GameVersion;
+use crate::models::{VersionConfig, game_version::GameVersion};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 
@@ -85,6 +85,10 @@ impl DSConfig {
             IsDSLite: is_dslite,
             MAC: mac,
         }
+    }
+
+    pub fn get_version_config(&self) -> VersionConfig{
+        VersionConfig::from_version(self.Version)
     }
 }
 

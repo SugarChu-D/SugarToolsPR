@@ -29,7 +29,7 @@ pub struct VersionConfig {
 }
 
 impl VersionConfig {
-    pub fn from_version(version: GameVersion) -> Self {
+    pub const fn from_version(version: GameVersion) -> Self {
         match version {
             GameVersion::Black => Self {
                 game_version: version,
