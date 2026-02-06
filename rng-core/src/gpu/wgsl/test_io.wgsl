@@ -9,6 +9,8 @@ struct GpuInput {
     gxframe_xor_frame: u32,
     date_as_data8: u32,
     timespec: array<vec2<u32>, 3>,
+    key_presses: u32,
+    _pad0: u32,
 }
 
 struct GpuCandidate {
@@ -46,7 +48,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     out.game_date = input.date_as_data8;
     out.game_time = input.timespec[0].x;
     out.timer0 = input.vcount_timer0_as_data5;
-    out.key_presses = input.nazo[0];
+    out.key_presses = input.key_presses;
 
     output_buf.data[i] = out;
 }

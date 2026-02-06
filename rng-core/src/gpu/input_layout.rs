@@ -1,4 +1,4 @@
-use crate::models::{DSConfig, game_date::GameDate, game_date_iterator::GameDateSpec};
+use crate::models::{DSConfig, KeyPresses, game_date::GameDate, game_date_iterator::GameDateSpec};
 
 use bytemuck::{Pod, Zeroable};
 
@@ -11,6 +11,8 @@ pub struct GpuInput {
     gxframe_xor_frame: u32,
     date_as_data8: u32,
     timespec: [[u32; 2]; 3],
+    key_presses: u32,
+    _pad0: u32,
 }
 
 #[cfg(test)]
@@ -22,6 +24,7 @@ impl GpuInput {
         gxframe_xor_frame: u32,
         date_as_data8: u32,
         timespec: [[u32; 2]; 3],
+        key_presses: u32,
     ) -> Self {
         Self {
             nazo,
@@ -30,6 +33,8 @@ impl GpuInput {
             gxframe_xor_frame,
             date_as_data8,
             timespec,
+            key_presses,
+            _pad0: 0,
         }
     }
 }
@@ -42,6 +47,7 @@ pub struct GPUInputIterator {
     current_date: GameDate,
     datespec: GameDateSpec,
     timespec: [[u32; 2]; 3],
+    key_presses: u32,
     finished: bool,
 }
 
@@ -66,6 +72,8 @@ impl Iterator for GPUInputIterator {
             gxframe_xor_frame: if self.ds_config.IsDSLite { 0x0600_0006} else {0x0600_0008},
             date_as_data8: self.current_date.get_date8_format(),
             timespec: self.timespec,
+            key_presses: self.key_presses,
+            _pad0: 0,
         };
         self.advance();
         Some(out)
@@ -73,13 +81,19 @@ impl Iterator for GPUInputIterator {
 }
 
 impl GPUInputIterator {
-    pub fn new(ds_config: DSConfig, datespec: GameDateSpec, timespec: [[u32; 2]; 3]) -> Self {
+    pub fn new(
+        ds_config: DSConfig,
+        datespec: GameDateSpec,
+        timespec: [[u32; 2]; 3],
+        key_presses: u32,
+    ) -> Self {
         
         Self {
             ds_config,
             current_date: datespec.start(),
             datespec,
             timespec,
+            key_presses,
             finished: false,
         }
     }
@@ -110,4 +124,18 @@ impl GPUInputIterator {
         // 完全終了
         self.finished = true;
     }
+}
+
+/// Build inputs for all valid key presses (2160 patterns).
+/// This expands the date range for each key press.
+pub fn build_inputs_for_keypresses(
+    ds_config: DSConfig,
+    datespec: GameDateSpec,
+    timespec: [[u32; 2]; 3],
+) -> Vec<GpuInput> {
+    KeyPresses::iter_valid()
+        .flat_map(|kp| {
+            GPUInputIterator::new(ds_config, datespec, timespec, kp.raw() as u32)
+        })
+        .collect()
 }
