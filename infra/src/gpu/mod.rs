@@ -2,6 +2,7 @@ pub mod context;
 pub mod pipeline_factory;
 pub mod buffer_pool;
 pub mod bind_layout_templates;
+pub mod readback;
 
 use wgpu::{self, util::DeviceExt};
 
