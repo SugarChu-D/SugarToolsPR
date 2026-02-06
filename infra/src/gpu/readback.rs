@@ -57,7 +57,7 @@ impl<'a> Readback<'a> {
                 Ok(result)
             }
             Some(Err(err)) => Err(err),
-            None => Err(wgpu::BufferAsyncError::MapAborted),
+            None => Err(wgpu::BufferAsyncError),
         }
     }
 }
