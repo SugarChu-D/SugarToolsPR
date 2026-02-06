@@ -129,20 +129,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let in_candidate = input_buf.data[i];
     let cfg = config_buf.data[i];
 
-    let seed0_lo: u32 = u32(in_candidate.seed0 & u64(0xFFFFFFFFu));
-    let seed0_hi: u32 = u32(in_candidate.seed0 >> 32u);
-
-    let lo_lo: u32 = seed0_lo * LCG_MULTIPLIER_LO;
-    let lo_hi: u32 = seed0_lo * LCG_MULTIPLIER_HI;
-    let hi_lo: u32 = seed0_hi * LCG_MULTIPLIER_LO;
-
-    let lo_pair = u32_add_carry(lo_lo, LCG_INCREMENT_LO);
-    let hi_pair1 = u32_add_carry(lo_hi, hi_lo);
-    let hi_pair2 = u32_add_carry(hi_pair1.x, LCG_INCREMENT_HI);
-    let hi_pair3 = u32_add_carry(hi_pair2.x, lo_pair.y);
-    let _overflow = hi_pair1.y + hi_pair2.y + hi_pair3.y;
-
-    let seed_high: u32 = hi_pair3.x;
+    let mult: u64 = (u64(LCG_MULTIPLIER_HI) << 32u) | u64(LCG_MULTIPLIER_LO);
+    let inc: u64 = (u64(LCG_INCREMENT_HI) << 32u) | u64(LCG_INCREMENT_LO);
+    let seed1: u64 = in_candidate.seed0 * mult + inc;
+    let seed_high: u32 = u32(seed1 >> 32u);
 
     let p = cfg.p;
     let init_range = p + 6u + M;
@@ -153,7 +143,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
     var out = in_candidate;
     if (!ivs_in_range(ivs, cfg.iv_min, cfg.iv_max)) {
-        //out.seed0 = u64(0u);
+        out.seed0 = u64(0u);
     }
 
     output_buf.data[i] = out;
