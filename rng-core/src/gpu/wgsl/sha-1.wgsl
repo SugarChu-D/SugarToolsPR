@@ -22,6 +22,10 @@ struct GpuInput {
     timespec: array<vec2<u32>, 3>,
     key_presses: u32,
     _pad0: u32,
+    p: u32,
+    iv_min: array<u32, 6>,
+    iv_max: array<u32, 6>,
+    _pad1: u32,
 }
 
 struct GpuCandidate {
@@ -96,11 +100,11 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     write_le(&bytes, off, input.nazo[4]); off = off + 4u;
     write_le(&bytes, off, input.vcount_timer0_as_data5); off = off + 4u;
 
-    let mac_lower_16: u32 = u32(input.mac & 0xFFFFu);
+    let mac_lower_16: u32 = u32(input.mac & u64(0xFFFFu));
     write_be(&bytes, off, mac_lower_16); off = off + 4u;
 
     let gxframe_xor_frame_le = bswap32(input.gxframe_xor_frame);
-    let mac_middle_16: u32 = u32((input.mac >> 16u) & 0xFFFF_FFFFu);
+    let mac_middle_16: u32 = u32((input.mac >> 16u) & u64(0xFFFFFFFFu));
     let data7: u32 = gxframe_xor_frame_le ^ mac_middle_16;
     write_be(&bytes, off, data7); off = off + 4u;
 

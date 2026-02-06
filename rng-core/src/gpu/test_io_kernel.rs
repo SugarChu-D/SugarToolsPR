@@ -67,8 +67,11 @@ pub async fn run_test_io_for_keypresses(
     ds_config: crate::models::DSConfig,
     datespec: crate::models::game_date_iterator::GameDateSpec,
     timespec: [[u32; 2]; 3],
+    p: u32,
+    iv_min: [u32; 6],
+    iv_max: [u32; 6],
 ) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
-    let inputs = build_inputs_for_keypresses(ds_config, datespec, timespec);
+    let inputs = build_inputs_for_keypresses(ds_config, datespec, timespec, p, iv_min, iv_max);
     run_test_io(ctx, &inputs).await
 }
 
@@ -112,6 +115,9 @@ mod tests {
             let date_as_data8 = 0x2026_0206;
             let timespec = [[123, 456], [789, 1011], [1213, 1415]];
             let key_presses = 0x2000u32;
+            let p = 5u32;
+            let iv_min = [0u32; 6];
+            let iv_max = [255u32; 6];
 
             let input = GpuInput::test_new(
                 nazo,
@@ -121,6 +127,9 @@ mod tests {
                 date_as_data8,
                 timespec,
                 key_presses,
+                p,
+                iv_min,
+                iv_max,
             );
 
             let results = run_test_io(&ctx, &[input]).await.expect("run_test_io failed");
@@ -148,8 +157,11 @@ mod tests {
             };
             let timespec = [[123, 456], [789, 1011], [1213, 1415]];
             let key_presses = 0x2000u32;
+            let p = 5u32;
+            let iv_min = [0u32; 6];
+            let iv_max = [255u32; 6];
 
-            let mut iter = GPUInputIterator::new(ds_config, datespec, timespec, key_presses);
+            let mut iter = GPUInputIterator::new(ds_config, datespec, timespec, key_presses, p, iv_min, iv_max);
             let input = iter.next().expect("iterator should yield one item");
 
             let results = run_test_io(&ctx, &[input]).await.expect("run_test_io failed");

@@ -11,6 +11,10 @@ struct GpuInput {
     timespec: array<vec2<u32>, 3>,
     key_presses: u32,
     _pad0: u32,
+    p: u32,
+    iv_min: array<u32, 6>,
+    iv_max: array<u32, 6>,
+    _pad1: u32,
 }
 
 struct GpuCandidate {

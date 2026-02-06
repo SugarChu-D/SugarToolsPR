@@ -13,6 +13,10 @@ pub struct GpuInput {
     timespec: [[u32; 2]; 3],
     key_presses: u32,
     _pad0: u32,
+    p: u32,
+    iv_min: [u32; 6],
+    iv_max: [u32; 6],
+    _pad1: u32,
 }
 
 #[cfg(test)]
@@ -25,6 +29,9 @@ impl GpuInput {
         date_as_data8: u32,
         timespec: [[u32; 2]; 3],
         key_presses: u32,
+        p: u32,
+        iv_min: [u32; 6],
+        iv_max: [u32; 6],
     ) -> Self {
         Self {
             nazo,
@@ -35,6 +42,10 @@ impl GpuInput {
             timespec,
             key_presses,
             _pad0: 0,
+            p,
+            iv_min,
+            iv_max,
+            _pad1: 0,
         }
     }
 }
@@ -48,6 +59,9 @@ pub struct GPUInputIterator {
     datespec: GameDateSpec,
     timespec: [[u32; 2]; 3],
     key_presses: u32,
+    p: u32,
+    iv_min: [u32; 6],
+    iv_max: [u32; 6],
     finished: bool,
 }
 
@@ -74,6 +88,10 @@ impl Iterator for GPUInputIterator {
             timespec: self.timespec,
             key_presses: self.key_presses,
             _pad0: 0,
+            p: self.p,
+            iv_min: self.iv_min,
+            iv_max: self.iv_max,
+            _pad1: 0,
         };
         self.advance();
         Some(out)
@@ -86,6 +104,9 @@ impl GPUInputIterator {
         datespec: GameDateSpec,
         timespec: [[u32; 2]; 3],
         key_presses: u32,
+        p: u32,
+        iv_min: [u32; 6],
+        iv_max: [u32; 6],
     ) -> Self {
         
         Self {
@@ -94,6 +115,9 @@ impl GPUInputIterator {
             datespec,
             timespec,
             key_presses,
+            p,
+            iv_min,
+            iv_max,
             finished: false,
         }
     }
@@ -132,10 +156,13 @@ pub fn build_inputs_for_keypresses(
     ds_config: DSConfig,
     datespec: GameDateSpec,
     timespec: [[u32; 2]; 3],
+    p: u32,
+    iv_min: [u32; 6],
+    iv_max: [u32; 6],
 ) -> Vec<GpuInput> {
     KeyPresses::iter_valid()
         .flat_map(|kp| {
-            GPUInputIterator::new(ds_config, datespec, timespec, kp.raw() as u32)
+            GPUInputIterator::new(ds_config, datespec, timespec, kp.raw() as u32, p, iv_min, iv_max)
         })
         .collect()
 }
