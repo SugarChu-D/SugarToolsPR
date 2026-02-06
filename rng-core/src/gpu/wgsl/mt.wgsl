@@ -2,7 +2,7 @@
 //
 // Input:
 // - seed0 from GpuCandidate
-// - p and iv_min/iv_max from GpuInput (same index)
+// - iv_step and iv_min/iv_max from GpuInput (same index)
 //
 // Output:
 // - If ivs are within range, seed0 is preserved.
@@ -32,13 +32,13 @@ struct GpuInput {
     mac: u64,
     gxframe_xor_frame: u32,
     date_as_data8: u32,
-    timespec: array<vec2<u32>, 3>,
-    key_presses: u32,
+    hour_range: array<u32, 2>,
+    minute_range: array<u32, 2>,
+    second_range: array<u32, 2>,
     _pad0: u32,
-    p: u32,
+    iv_step: u32,
     iv_min: array<u32, 6>,
     iv_max: array<u32, 6>,
-    _pad1: u32,
 }
 
 struct GpuCandidate {
@@ -119,7 +119,7 @@ fn u32_add_carry(a: u32, b: u32) -> vec2<u32> {
     return vec2<u32>(sum, carry);
 }
 
-@compute @workgroup_size(64)
+@compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = gid.x;
     if (i >= arrayLength(&input_buf.data)) {
@@ -127,14 +127,16 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
 
     let in_candidate = input_buf.data[i];
-    let cfg = config_buf.data[i];
+    let cfg_len = arrayLength(&config_buf.data);
+    let cfg_idx = select(i, 0u, cfg_len == 1u);
+    let cfg = config_buf.data[cfg_idx];
 
     let mult: u64 = (u64(LCG_MULTIPLIER_HI) << 32u) | u64(LCG_MULTIPLIER_LO);
     let inc: u64 = (u64(LCG_INCREMENT_HI) << 32u) | u64(LCG_INCREMENT_LO);
     let seed1: u64 = in_candidate.seed0 * mult + inc;
     let seed_high: u32 = u32(seed1 >> 32u);
 
-    let p = cfg.p;
+    let p = cfg.iv_step;
     let init_range = p + 6u + M;
 
     var table: array<u32, 423>;

@@ -15,7 +15,10 @@ pub async fn run_mt(
     candidates: &[GpuCandidate],
     configs: &[GpuInput],
 ) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
-    assert_eq!(candidates.len(), configs.len());
+    assert!(
+        configs.len() == 1 || configs.len() == candidates.len(),
+        "configs must have length 1 or match candidates length"
+    );
 
     let shader = ShaderLoader::from_wgsl(
         &ctx.device,

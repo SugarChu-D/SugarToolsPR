@@ -1,23 +1,24 @@
-use crate::models::{DSConfig, KeyPresses, game_date::GameDate, game_date_iterator::GameDateSpec};
+use crate::models::{DSConfig, game_date::GameDate, game_date_iterator::GameDateSpec};
 
 use bytemuck::{Pod, Zeroable};
 
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct GpuInput {
-    nazo: [u32; 5],
-    vcount_timer0_as_data5: u32,
-    mac: u64,
-    gxframe_xor_frame: u32,
-    date_as_data8: u32,
-    timespec: [[u32; 2]; 3],
-    key_presses: u32,
-    _pad0: u32,
-    p: u32,
-    iv_min: [u32; 6],
-    iv_max: [u32; 6],
-    _pad1: u32,
+    pub nazo: [u32; 5],
+    pub vcount_timer0_as_data5: u32,
+    pub mac: u64,
+    pub gxframe_xor_frame: u32,
+    pub date_as_data8: u32,
+    pub hour_range: [u32; 2],
+    pub minute_range: [u32; 2],
+    pub second_range: [u32; 2],
+    pub _pad0: u32,
+    pub iv_step: u32,
+    pub iv_min: [u32; 6],
+    pub iv_max: [u32; 6],
 }
+
 
 #[cfg(test)]
 impl GpuInput {
@@ -27,9 +28,10 @@ impl GpuInput {
         mac: u64,
         gxframe_xor_frame: u32,
         date_as_data8: u32,
-        timespec: [[u32; 2]; 3],
-        key_presses: u32,
-        p: u32,
+        hour_range: [u32; 2],
+        minute_range: [u32; 2],
+        second_range: [u32; 2],
+        iv_step: u32,
         iv_min: [u32; 6],
         iv_max: [u32; 6],
     ) -> Self {
@@ -39,15 +41,16 @@ impl GpuInput {
             mac,
             gxframe_xor_frame,
             date_as_data8,
-            timespec,
-            key_presses,
+            hour_range,
+            minute_range,
+            second_range,
             _pad0: 0,
-            p,
+            iv_step,
             iv_min,
             iv_max,
-            _pad1: 0,
         }
     }
+
 }
 
 /**
@@ -57,9 +60,10 @@ pub struct GPUInputIterator {
     ds_config: DSConfig,
     current_date: GameDate,
     datespec: GameDateSpec,
-    timespec: [[u32; 2]; 3],
-    key_presses: u32,
-    p: u32,
+    hour_range: [u32; 2],
+    minute_range: [u32; 2],
+    second_range: [u32; 2],
+    iv_step: u32,
     iv_min: [u32; 6],
     iv_max: [u32; 6],
     finished: bool,
@@ -85,13 +89,13 @@ impl Iterator for GPUInputIterator {
             mac: self.ds_config.MAC,
             gxframe_xor_frame: if self.ds_config.IsDSLite { 0x0600_0006} else {0x0600_0008},
             date_as_data8: self.current_date.get_date8_format(),
-            timespec: self.timespec,
-            key_presses: self.key_presses,
+            hour_range: self.hour_range,
+            minute_range: self.minute_range,
+            second_range: self.second_range,
             _pad0: 0,
-            p: self.p,
+            iv_step: self.iv_step,
             iv_min: self.iv_min,
             iv_max: self.iv_max,
-            _pad1: 0,
         };
         self.advance();
         Some(out)
@@ -102,20 +106,21 @@ impl GPUInputIterator {
     pub fn new(
         ds_config: DSConfig,
         datespec: GameDateSpec,
-        timespec: [[u32; 2]; 3],
-        key_presses: u32,
-        p: u32,
+        hour_range: [u32; 2],
+        minute_range: [u32; 2],
+        second_range: [u32; 2],
+        iv_step: u32,
         iv_min: [u32; 6],
         iv_max: [u32; 6],
     ) -> Self {
-        
         Self {
             ds_config,
             current_date: datespec.start(),
             datespec,
-            timespec,
-            key_presses,
-            p,
+            hour_range,
+            minute_range,
+            second_range,
+            iv_step,
             iv_min,
             iv_max,
             finished: false,
@@ -150,19 +155,3 @@ impl GPUInputIterator {
     }
 }
 
-/// Build inputs for all valid key presses (2160 patterns).
-/// This expands the date range for each key press.
-pub fn build_inputs_for_keypresses(
-    ds_config: DSConfig,
-    datespec: GameDateSpec,
-    timespec: [[u32; 2]; 3],
-    p: u32,
-    iv_min: [u32; 6],
-    iv_max: [u32; 6],
-) -> Vec<GpuInput> {
-    KeyPresses::iter_valid()
-        .flat_map(|kp| {
-            GPUInputIterator::new(ds_config, datespec, timespec, kp.raw() as u32, p, iv_min, iv_max)
-        })
-        .collect()
-}
