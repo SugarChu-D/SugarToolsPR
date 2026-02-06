@@ -21,10 +21,10 @@ impl GpuContext {
             let (device, queue) = adapter
                 .request_device(&wgpu::DeviceDescriptor {
                     label: None,
-                    required_features: wgpu::Features::empty(),
+                    required_features: wgpu::Features::SHADER_INT64,
                     required_limits: wgpu::Limits::default(),
-                }, 
-                None)
+                    ..Default::default()
+                })
                 .await
                 .expect("Failed to create device");
 
@@ -33,7 +33,7 @@ impl GpuContext {
     }
 }
 
-#[cfg(all(test, not(ci)))]
+#[cfg(test)]
 mod tests {
     use super::*;
 

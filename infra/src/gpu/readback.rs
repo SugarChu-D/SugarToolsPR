@@ -46,8 +46,8 @@ impl<'a> Readback<'a> {
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).ok();
         });
-        self.device.poll(wgpu::Maintain::Wait);
-
+        let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
+        
         match rx.receive().await {
             Some(Ok(())) => {
                 let data = buffer_slice.get_mapped_range();
@@ -58,6 +58,51 @@ impl<'a> Readback<'a> {
             }
             Some(Err(err)) => Err(err),
             None => Err(wgpu::BufferAsyncError),
+        }
+    }
+
+    pub async fn read_buffer_with_pool<T: Pod>(
+        &self,
+        pool: &super::buffer_pool::BufferPool<'_>,
+        buffer: &wgpu::Buffer,
+        len: usize,
+        label: Option<&str>,
+    ) -> Result<Vec<T>, wgpu::BufferAsyncError> {
+        let byte_len = (len * std::mem::size_of::<T>()) as u64;
+
+        let staging_label = label.unwrap_or("staging");
+        let staging_buffer = pool.take_staging(byte_len as usize, staging_label);
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label,
+        });
+        encoder.copy_buffer_to_buffer(buffer, 0, &staging_buffer, 0, byte_len);
+        self.queue.submit(Some(encoder.finish()));
+
+        let buffer_slice = staging_buffer.slice(..);
+        let (tx, rx) = futures_intrusive::channel::shared::oneshot_channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+            tx.send(result).ok();
+        });
+        let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
+
+        match rx.receive().await {
+            Some(Ok(())) => {
+                let data = buffer_slice.get_mapped_range();
+                let result: Vec<T> = bytemuck::cast_slice(&data).to_vec();
+                drop(data);
+                staging_buffer.unmap();
+                pool.put_staging(byte_len as usize, staging_buffer);
+                Ok(result)
+            }
+            Some(Err(err)) => {
+                pool.put_staging(byte_len as usize, staging_buffer);
+                Err(err)
+            }
+            None => {
+                pool.put_staging(byte_len as usize, staging_buffer);
+                Err(wgpu::BufferAsyncError)
+            }
         }
     }
 }

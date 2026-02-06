@@ -1,6 +1,8 @@
 use crate::models::{DSConfig, game_date::GameDate, game_date_iterator::GameDateSpec};
 
-#[derive(Clone, Copy)]
+use bytemuck::{Pod, Zeroable};
+
+#[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct GpuInput {
     nazo: [u32; 5],
@@ -8,7 +10,28 @@ pub struct GpuInput {
     mac: u64,
     gxframe_xor_frame: u32,
     date_as_data8: u32,
-    timespec: [(u32, u32); 3],
+    timespec: [[u32; 2]; 3],
+}
+
+#[cfg(test)]
+impl GpuInput {
+    pub fn test_new(
+        nazo: [u32; 5],
+        vcount_timer0_as_data5: u32,
+        mac: u64,
+        gxframe_xor_frame: u32,
+        date_as_data8: u32,
+        timespec: [[u32; 2]; 3],
+    ) -> Self {
+        Self {
+            nazo,
+            vcount_timer0_as_data5,
+            mac,
+            gxframe_xor_frame,
+            date_as_data8,
+            timespec,
+        }
+    }
 }
 
 /**
@@ -18,7 +41,7 @@ pub struct GPUInputIterator {
     ds_config: DSConfig,
     current_date: GameDate,
     datespec: GameDateSpec,
-    timespec: [(u32, u32); 3],
+    timespec: [[u32; 2]; 3],
     finished: bool,
 }
 
@@ -50,7 +73,7 @@ impl Iterator for GPUInputIterator {
 }
 
 impl GPUInputIterator {
-    pub fn new(ds_config: DSConfig, datespec: GameDateSpec, timespec: [(u32, u32); 3]) -> Self {
+    pub fn new(ds_config: DSConfig, datespec: GameDateSpec, timespec: [[u32; 2]; 3]) -> Self {
         
         Self {
             ds_config,

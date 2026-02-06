@@ -1,3 +1,6 @@
+use bytemuck::{Pod, Zeroable};
+
+#[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]
 pub struct GpuCandidate {
     pub seed0: u64,
