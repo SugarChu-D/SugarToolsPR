@@ -95,7 +95,7 @@ impl KeyPresses {
         if keys.is_empty() {
             "none".to_string()
         } else {
-            keys.join("+")
+            keys.join(" + ")
         }
     }
     
