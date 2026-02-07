@@ -8,7 +8,8 @@ impl Lcg {
         }
         let next: u32 = (self.next() >> 32) as u32;
         // TIDはnext>>32の下16ビット
-        let tid: u16 = ((next & 0xFFFF) - 1) as u16;
+        // The game logic is effectively modulo 65536; avoid debug underflow on 0.
+        let tid: u16 = ((next & 0xFFFF) as u16).wrapping_sub(1);
         // SIDはnext>>32の上16ビット
         let sid: u16 = ((next >> 16) & 0xFFFF) as u16;
 

@@ -322,6 +322,29 @@ pub async fn run_mt_seedhigh_candidates_cached(
     Ok(computed)
 }
 
+pub async fn run_mt_seedhigh_candidates_cached_multi(
+    ctx: &infra::gpu::context::GpuContext,
+    configs: &[GpuIvConfig],
+) -> Result<Vec<u32>, wgpu::BufferAsyncError> {
+    if configs.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut combined: Vec<u32> = Vec::new();
+    for cfg in configs {
+        let mut chunk = run_mt_seedhigh_candidates_cached(ctx, cfg).await?;
+        combined.append(&mut chunk);
+    }
+
+    if combined.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    combined.sort_unstable();
+    combined.dedup();
+    Ok(combined)
+}
+
 #[cfg(all(test, not(ci)))]
 mod tests {
     use super::*;

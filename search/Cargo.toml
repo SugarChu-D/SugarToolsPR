@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 rng-core = { path = "../rng-core"}
 infra = { path = "../infra" }
+rayon = "1"
 
 [dev-dependencies]
 pollster = "0.3"

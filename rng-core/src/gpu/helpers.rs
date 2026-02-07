@@ -157,6 +157,45 @@ pub async fn run_result_base_seedhigh_by_dates(
     Ok(results)
 }
 
+pub async fn run_result_base_seedhigh_by_dates_multi_iv(
+    ctx: &infra::gpu::context::GpuContext,
+    ds_config: DSConfig,
+    params: &GpuInputParams,
+    dates: &[GameDate],
+    batch_size: usize,
+    iv_cfgs: &[GpuIvConfig],
+) -> Result<Vec<ResultBase>, wgpu::BufferAsyncError> {
+    if dates.is_empty() {
+        return Ok(Vec::new());
+    }
+    if iv_cfgs.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let seed_highs = mt_kernel::run_mt_seedhigh_candidates_cached_multi(ctx, iv_cfgs).await?;
+    if seed_highs.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut results = Vec::new();
+    let batch = batch_size.max(1);
+    let mut inputs = Vec::with_capacity(batch);
+    for &date in dates {
+        inputs.push(params.with_date(date));
+        if inputs.len() >= batch {
+            let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
+            results.append(&mut build_result_base_from_candidates(ds_config, chunk));
+            inputs.clear();
+        }
+    }
+    if !inputs.is_empty() {
+        let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
+        results.append(&mut build_result_base_from_candidates(ds_config, chunk));
+    }
+
+    Ok(results)
+}
+
 fn build_result_base_from_candidates(
     ds_config: DSConfig,
     candidates: Vec<crate::gpu::staging_layout::GpuCandidate>,

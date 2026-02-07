@@ -513,7 +513,30 @@ pub async fn run_sha1_seedhigh_filter(
 
     let readback = Readback::new(ctx);
 
-    let mut results = Vec::new();
+    let output_bytes = (MAX_RESULTS * std::mem::size_of::<GpuCandidate>()) as u64;
+    let output_buffer = pool
+        .create::<GpuCandidate>(output_bytes as usize, BufferKind::Output, "rng_core_sha1_seedhigh_output_buffer")
+        .buffer;
+
+    let counter_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("rng_core_sha1_seedhigh_counter_buffer"),
+        contents: bytemuck::bytes_of(&0u32),
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
+    });
+
+    let params_buffer = pool
+        .create::<ListDispatchParams>(std::mem::size_of::<ListDispatchParams>(), BufferKind::Input, "rng_core_sha1_seedhigh_params_buffer")
+        .buffer;
+
+    let bind_group = BindGroupBuilder::new(&layout)
+        .buffer(0, &input_buffer)
+        .buffer(1, &list_buffer)
+        .buffer(2, &keypress_buffer)
+        .buffer(3, &output_buffer)
+        .buffer(4, &counter_buffer)
+        .buffer(5, &params_buffer)
+        .build(&ctx.device, Some("rng_core_sha1_seedhigh_bind_group"));
+
     let mut base: u64 = 0;
     let wg = GpuKernelConfig::SHA1_MT.workgroup_size as u64;
     let max_groups = ctx
@@ -525,36 +548,13 @@ pub async fn run_sha1_seedhigh_filter(
     while base < output_len_u64 {
         let remaining = output_len_u64 - base;
         let chunk_len = remaining.min(max_dispatch) as u32;
-
-        let output_bytes = (MAX_RESULTS * std::mem::size_of::<GpuCandidate>()) as u64;
-        let output_buffer = pool
-            .create::<GpuCandidate>(output_bytes as usize, BufferKind::Output, "rng_core_sha1_seedhigh_output_buffer")
-            .buffer;
-
-        let counter_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("rng_core_sha1_seedhigh_counter_buffer"),
-            contents: bytemuck::bytes_of(&0u32),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        });
-
         let params = ListDispatchParams {
             base_index: base,
             total_len: output_len_u64,
             list_len: list.len() as u32,
             keypress_len: keypress_count,
         };
-        let params_buffer = pool
-            .create_init(std::slice::from_ref(&params), BufferKind::Input, "rng_core_sha1_seedhigh_params_buffer")
-            .buffer;
-
-        let bind_group = BindGroupBuilder::new(&layout)
-            .buffer(0, &input_buffer)
-            .buffer(1, &list_buffer)
-            .buffer(2, &keypress_buffer)
-            .buffer(3, &output_buffer)
-            .buffer(4, &counter_buffer)
-            .buffer(5, &params_buffer)
-            .build(&ctx.device, Some("rng_core_sha1_seedhigh_bind_group"));
+        ctx.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
         let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("rng_core_sha1_seedhigh_encoder"),
@@ -574,29 +574,26 @@ pub async fn run_sha1_seedhigh_filter(
         }
         ctx.queue.submit(Some(encoder.finish()));
 
-        let count_vec = readback
-            .read_buffer::<u32>(&counter_buffer, 1, Some("rng_core_sha1_seedhigh_count"))
-            .await?;
-        let count = count_vec[0] as usize;
-        if count > 0 {
-            let read_len = count.min(MAX_RESULTS);
-            let mut chunk = readback
-                .read_buffer_with_pool::<GpuCandidate>(
-                    &pool,
-                    &output_buffer,
-                    read_len,
-                    Some("rng_core_sha1_seedhigh_readback"),
-                )
-                .await?;
-            results.append(&mut chunk);
-            if results.len() >= MAX_RESULTS {
-                results.truncate(MAX_RESULTS);
-                break;
-            }
-        }
-
         base += chunk_len as u64;
     }
+
+    let count_vec = readback
+        .read_buffer::<u32>(&counter_buffer, 1, Some("rng_core_sha1_seedhigh_count"))
+        .await?;
+    let count = count_vec[0] as usize;
+    if count == 0 {
+        return Ok(Vec::new());
+    }
+
+    let read_len = count.min(MAX_RESULTS);
+    let results = readback
+        .read_buffer_with_pool::<GpuCandidate>(
+            &pool,
+            &output_buffer,
+            read_len,
+            Some("rng_core_sha1_seedhigh_readback"),
+        )
+        .await?;
 
     Ok(results)
 }
