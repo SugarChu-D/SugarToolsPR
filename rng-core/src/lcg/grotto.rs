@@ -7,6 +7,7 @@ pub struct Grotto {
     gender: Option<u32>
 }
 
+#[derive(Debug, Clone)]
 pub struct Grottos {
     grottos: [Grotto; 20]
 }
@@ -66,6 +67,26 @@ impl Grottos {
             Grotto::default(),
             Grotto::default(),
         ]
+    }
+}
+
+impl Grotto {
+    pub fn sub_slot(&self) -> Option<u32> {
+        self.sub_slot
+    }
+
+    pub fn slot(&self) -> Option<u32> {
+        self.slot
+    }
+
+    pub fn gender(&self) -> Option<u32> {
+        self.gender
+    }
+}
+
+impl Grottos {
+    pub fn get(&self, index: usize) -> Option<Grotto> {
+        self.grottos.get(index).copied()
     }
 }
 
