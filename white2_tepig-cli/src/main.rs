@@ -4,10 +4,11 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
+use rng_core::lcg::TID_impl::get_frigate_pass;
 use rng_core::lcg::nature::Nature;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::game_version::GameVersion;
-use search::white2_tepig::white2_tepig_search;
+use search::white2_tepig::{BW2Mode, white2_tepig_search};
 use search::white2_tepig::TepigSearchResult;
 use serde::Deserialize;
 
@@ -31,9 +32,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let nature = prompt_nature()?;
 
+    let mode = if nature.id() == 19 {
+        prompt_mode()?
+    } else { BW2Mode::Normal };
+
     let (year, month, day) = prompt_date()?;
     let results =
-        pollster::block_on(async { white2_tepig_search(ds_config, year, month, day, nature).await });
+        pollster::block_on(async { white2_tepig_search(ds_config, year, month, day, nature, mode).await });
 
     let output_path = default_output_path();
     let text = build_text(&results);
@@ -100,8 +105,7 @@ fn default_output_path() -> PathBuf {
     }
 }
 
-fn 
-prompt_nature() -> Result<Nature, Box<dyn Error>> {
+fn prompt_nature() -> Result<Nature, Box<dyn Error>> {
     let s = prompt("nature (naughty/rash)", "naughty")?;
     let id = match s.trim().to_lowercase().as_str() {
         "naughty" | "4" | "n" => 4,
@@ -109,6 +113,16 @@ prompt_nature() -> Result<Nature, Box<dyn Error>> {
         _ => return Err("nature must be naughty or rash".into()),
     };
     Ok(Nature::new(id))
+}
+
+fn prompt_mode() -> Result<BW2Mode, Box<dyn Error>> {
+    let s = prompt("mode (NM/CM)", "NM")?;
+    let mode = match s.trim().to_lowercase().as_str() {
+        "NM" | "nm" | "n" => BW2Mode::Normal,
+        "CM" | "cm" | "c" => BW2Mode::Challenge,
+        _ => return Err("Invalid Mode".into()),
+    };
+    Ok(mode)
 }
 
 fn prompt_date() -> Result<(u8, u8, u8), Box<dyn Error>> {
@@ -125,17 +139,21 @@ fn prompt_date() -> Result<(u8, u8, u8), Box<dyn Error>> {
 
 fn build_text(results: &[TepigSearchResult]) -> String {
     let mut out = String::new();
-    out.push_str(&format!("total_results={}\n", results.len()));
+    out.push_str(&format!("total_results:{}\n", results.len()));
     for r in results {
         out.push_str(&format!(
-            "seed0={:016X} seed1={:016X} date={:02}/{:02} {:02}:{:02}:{:02} kp={}",
-            r.seed0, r.seed1, r.month, r.day, r.hour, r.minute, r.second, r.key_presses
+            "seed0: {:016X}\nseed1: {:016X}\n",
+            r.seed0, r.seed1,
         ));
-        out.push('\n');
-        out.push_str(&format!("ivs={:?} iv_step={}\n", r.ivs, r.tepig_iv_step));
-        out.push_str(&format!("tepig_frames={:?}\n", r.tepig_frames));
+        out.push_str(&format!(
+            "date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key: {}\n",
+            r.year, r.month, r.day, r.hour, r.minute, r.second, r.key_presses
+        ));
+        out.push_str(&format!("TID: {} Frigate: {}\n", r.tid, get_frigate_pass(r.tid)));
+        out.push_str(&format!("ivs=: {:?} iv_step: {}\n", r.ivs, r.tepig_iv_step));
+        out.push_str(&format!("tepig_frames: {:?}\n", r.tepig_frames));
 
-        out.push_str("pidove_frames=");
+        out.push_str("pidove_frames:\n");
         for (frame, poke) in &r.pidove_frames {
             let nature = poke.nature.as_ref().map(|n| n.name()).unwrap_or("None");
             let lv = if poke.slot.is_some_and(|s| s < 20) { "Lv.2" } else { "Lv.4" };
@@ -143,7 +161,7 @@ fn build_text(results: &[TepigSearchResult]) -> String {
         }
         out.push('\n');
 
-        out.push_str("psyduck_frames=");
+        out.push_str("psyduck_frames:\n");
         for (frame, poke) in &r.psyduck_frames {
             let nature = poke.nature.as_ref().map(|n| n.name()).unwrap_or("None");
             out.push_str(&format!("{}:{} ", frame, nature));

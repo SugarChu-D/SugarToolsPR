@@ -42,15 +42,15 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
     // data[7]
     // GxFrame XOR frame の結果をビッグエンディアンで取得し、
     // MACアドレスの中間32itとXORを取ってビッグエンディアンで追加
-    const GxFrame: u32 = 0x0600_0000; // GxFrameはほぼ固定
+    const GX_FRAME: u32 = 0x0600_0000; // GxFrameはほぼ固定
     let frame: u32 = if config.IsDSLite { 6 } else { 8 };
-    let gxframe_xor_frame = GxFrame ^ frame;
+    let gxframe_xor_frame = GX_FRAME ^ frame;
     let gxframe_xor_frame_le = u32::from_be(gxframe_xor_frame);
     let mac_middle_16 = ((config.MAC >> 16) & 0xFFFFFFFF) as u32;
     let data7 = gxframe_xor_frame_le ^ mac_middle_16;
     #[cfg(debug_assertions)]
     {
-        println!("GxFrame: 0x{:08X}, frame: 0x{:08X}, gxframe_xor_frame: 0x{:08X}", GxFrame, frame, gxframe_xor_frame);
+        println!("GxFrame: 0x{:08X}, frame: 0x{:08X}, gxframe_xor_frame: 0x{:08X}", GX_FRAME, frame, gxframe_xor_frame);
         println!("gxframe_xor_frame_le: 0x{:08X}, mac_middle_16: 0x{:08X}", gxframe_xor_frame_le, mac_middle_16);
         println!("data7: 0x{:08X}", data7);
     }

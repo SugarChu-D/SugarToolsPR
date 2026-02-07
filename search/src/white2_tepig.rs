@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use infra::gpu::context::GpuContext;
 use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
-use rng_core::lcg::Lcg;
+use rng_core::lcg::{Lcg, OffsetType};
 use rng_core::lcg::grotto::Grottos;
 use rng_core::lcg::nature::Nature as Nature;
 use rng_core::lcg::wild_poke::WildPoke;
@@ -20,6 +20,7 @@ pub struct TepigSearchResult {
     pub hour: u8,
     pub minute: u8,
     pub second: u8,
+    pub tid: u16,
     pub key_presses: String,
     pub ivs: [u8; 6],
     pub tepig_iv_step: u8,
@@ -29,6 +30,12 @@ pub struct TepigSearchResult {
     pub psyduck_frames: Vec<(u32, WildPoke)>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum BW2Mode {
+    Normal,
+    Challenge,
+}
+
 const FRAME_ENTERING_ROUTE20: u64 = 430;
 const FRAME_EXITING_ROUTE20: u64 = 510;
 const FRAME_ENTERING_RANCH: u64 = 550;
@@ -36,8 +43,8 @@ const FRAME_EXITING_RANCH: u64 = 630;
 const FRAME_MIN_FOR_CANDY: u64 = 360;
 const FRAME_MAX_FOR_CANDY: u64 = 440;
 
-const MIN_TEPIG_NATURE: u64 = 215;
-const MAX_TEPIG_NATURE: u64 = 270;
+const MIN_TEPIG_NATURE: u64 = 190;
+const MAX_TEPIG_NATURE: u64 = 240;
 const GROTTO_INDEX: usize = 3;
 const GROTTO_SUB_SLOT: u32 = 0;
 const GROTTO_SLOT: u32 = 60;
@@ -45,7 +52,7 @@ const GROTTO_INDEX_2: usize = 19;
 const GROTTO_SLOT_2: u32 = 0;
 
 /**
-繧・ｓ縺｡繧・・繧ｫ繝悶↓蜷医≧蛟倶ｽ灘､縺九←縺・°繧堤｢ｺ縺九ａ繧・
+やんちゃの個体値かどうかを確かめる
 */
 fn tepig_iv_check_naughty(ivs: [u8; 6]) -> bool {
     (27..=31).contains(&ivs[0]) // HP
@@ -56,7 +63,7 @@ fn tepig_iv_check_naughty(ivs: [u8; 6]) -> bool {
 } 
 
 /**
-縺・▲縺九ｊ繧・↓蜷医≧蛟倶ｽ灘､縺九←縺・°繧堤｢ｺ縺九ａ繧・
+うっかりやに適した個体値かどうかを確かめる
 */
 fn tepig_iv_check_rash(ivs: [u8; 6]) -> bool {
     (28..=31).contains(&ivs[0]) // HP
@@ -76,13 +83,13 @@ fn tepig_iv_check(ivs: [u8; 6], nat: &Nature) -> bool {
 
 const BATCH_DATES: usize = 64;
 
-pub async fn white2_tepig_dragonite_search(config: DSConfig, nat: Nature)
+pub async fn white2_tepig_dragonite_search(config: DSConfig, nat: Nature, mode: BW2Mode)
     -> Vec<TepigSearchResult> {
     let dates = build_all_dates();
-    search_by_dates(config, nat, &dates, find_grotto_advances_with_index19).await
+    search_by_dates(config, nat, &dates, mode, find_grotto_advances_candy_dragonite).await
 }
 
-pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8, nat: Nature)
+pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8, nat: Nature, mode: BW2Mode)
     -> Vec<TepigSearchResult> {
     if year >= 100 || month > 12 || day > 31 {
         panic!("Invalid Date!")
@@ -93,13 +100,14 @@ pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8,
     };
 
     let dates = [GameDate{ year, month, day }];
-    search_by_dates(config, nat, &dates, find_grotto_advances).await
+    search_by_dates(config, nat, &dates, mode, find_grotto_advances_candy).await
 }
 
 async fn search_by_dates(
     config: DSConfig,
     nat: Nature,
     dates: &[GameDate],
+    mode: BW2Mode,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
 )
     -> Vec<TepigSearchResult> {
@@ -133,6 +141,7 @@ async fn search_by_dates(
             collect_gpu_results(
                 &ctx,
                 config,
+                mode,
                 nat.clone(),
                 iv_step,
                 find_grotto,
@@ -147,6 +156,7 @@ async fn search_by_dates(
             collect_gpu_results(
                 &ctx,
                 config,
+                mode,
                 nat.clone(),
                 iv_step,
                 find_grotto,
@@ -164,6 +174,7 @@ async fn search_by_dates(
 async fn collect_gpu_results(
     ctx: &GpuContext,
     config: DSConfig,
+    mode: BW2Mode,
     nat: Nature,
     iv_step: u32,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
@@ -182,12 +193,27 @@ async fn collect_gpu_results(
         let seed1 = base.seed1;
 
         let mut rng: Lcg = Lcg::new(seed0);
+        let offset = match mode {
+            BW2Mode::Normal => rng.offset_seed0(OffsetType::BW2Start),
+            BW2Mode::Challenge => rng.offset_seed0(OffsetType::BW2StartChallengeMode),
+        };
+
+        let ivs: [u8; 6] = rng_core::mt::mt_1(seed1, iv_step as u8);
+        if !tepig_iv_check(ivs, &nat) {
+            continue;
+        }
+        let tepig_iv_frame: u8 = iv_step as u8;
+
+        if iv_step == 17 {rng.next();}
+
+        let tid = rng.tid_sid(OffsetType::BW2Start).0;
+
         rng.advance(MIN_TEPIG_NATURE - 1);
 
         let mut tepig_frames = Vec::new();
 
         for frame in MIN_TEPIG_NATURE..=MAX_TEPIG_NATURE{
-            if rng.get_nature() == nat { tepig_frames.push((frame & 0xFFFFFFFF) as u32) }
+            if rng.get_nature() == nat { tepig_frames.push((frame + offset & 0xFFFFFFFF) as u32) }
         }
 
         if tepig_frames.is_empty() { continue; }
@@ -205,12 +231,6 @@ async fn collect_gpu_results(
             continue;
         }
 
-        let ivs: [u8; 6] = rng_core::mt::mt_1(seed1, iv_step as u8);
-        if !tepig_iv_check(ivs, &nat) {
-            continue;
-        }
-        let tepig_iv_frame: u8 = iv_step as u8;
-
         results.push(TepigSearchResult {
             seed0,
             seed1,
@@ -220,6 +240,7 @@ async fn collect_gpu_results(
             hour: base.game_time.hour,
             minute: base.game_time.minute,
             second: base.game_time.second,
+            tid,
             key_presses: base.key_presses.pressed_keys_string(),
             ivs,
             tepig_iv_step: tepig_iv_frame,
@@ -282,7 +303,7 @@ fn is_target_psyduck(duck: &WildPoke) -> bool {
     slot_ok && ability_ok
 }
 
-fn find_grotto_advances(seed0: u64, start: u64, end: u64) -> Vec<(u32, Grottos)> {
+fn find_grotto_advances_candy(seed0: u64, start: u64, end: u64) -> Vec<(u32, Grottos)> {
     let mut out: Vec<(u32, Grottos)> = Vec::new();
     for frame in start..=end {
         let mut seed = Lcg::new(seed0);
@@ -299,7 +320,7 @@ fn find_grotto_advances(seed0: u64, start: u64, end: u64) -> Vec<(u32, Grottos)>
     out
 }
 
-fn find_grotto_advances_with_index19(seed0: u64, start: u64, end: u64) -> Vec<(u32, Grottos)> {
+fn find_grotto_advances_candy_dragonite(seed0: u64, start: u64, end: u64) -> Vec<(u32, Grottos)> {
     let mut out: Vec<(u32, Grottos)> = Vec::new();
     for frame in start..=end {
         let mut seed = Lcg::new(seed0);
@@ -321,6 +342,8 @@ fn find_grotto_advances_with_index19(seed0: u64, start: u64, end: u64) -> Vec<(u
 
 #[cfg(test)]
 mod tests {
+    use rng_core::lcg::TID_impl::get_frigate_pass;
+
     use super::*;
     use std::time::Instant;
 
@@ -338,10 +361,12 @@ mod tests {
         let results = pollster::block_on(async {
             white2_tepig_search(
                 ds_config,
-                74,
-                1,
-                22,
-                Nature::new(4)).await // 例: Rash
+                33,
+                8,
+                27,
+                Nature::new(4),
+                BW2Mode::Normal
+            ).await // 例: Rash
         });
         let elapsed = start.elapsed();
 
@@ -349,9 +374,12 @@ mod tests {
         println!("Total results: {}", results.len());
         for r in results.iter() {
             println!(
-                "seed0={:016X} seed1={:016X} date={:02}/{:02} {:02}:{:02}:{:02} kp={}",
+                "seed0: {:016X} seed1: {:016X} ",
                 r.seed0,
                 r.seed1,
+            );
+            println!("date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key={}",
+                r.year,
                 r.month,
                 r.day,
                 r.hour,
@@ -359,6 +387,7 @@ mod tests {
                 r.second,
                 r.key_presses,
             );
+            println!("TID: {} Pass: {}", r.tid, get_frigate_pass(r.tid));
             println!("ivs={:?} iv_step={}", r.ivs, r.tepig_iv_step);
             println!("Tepig frame: {:?}", r.tepig_frames);
             println!("Pidove:");

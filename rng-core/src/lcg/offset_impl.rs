@@ -14,6 +14,7 @@ pub enum OffsetType {
     Bw1Start,
     Bw1Continue,
     BW2Start,
+    BW2StartChallengeMode,
     BW2Continue,
     BW2ContinueWithLink,
 }
@@ -43,11 +44,19 @@ impl Lcg {
                 self.pt(1);
                 self.advance(4);
                 self.pt(1);
-                self.advance(2);
+                self.advance(3);
                 // チラチーノ用pid
                 self.next();
                 // 以降はTID,SID
             },
+            OffsetType::BW2StartChallengeMode => {
+                self.pt(1);
+                self.advance(1);
+                self.pt(1);
+                self.advance(2);
+                self.pt(1);
+                self.advance(2);
+            }
             // BW2続きから
             OffsetType::BW2Continue => {
                 self.pt(1);
@@ -101,17 +110,25 @@ impl Lcg {
 mod tests {
     use super::*;
     #[test]
-    fn test_offset_BW2Contiue() {
+    fn test_offset_bw2_contiue() {
         let mut seed = Lcg::new(0x490CC591E17E7DB7);
         let offset = seed.offset_seed1(OffsetType::BW2Continue);
         assert_eq!(offset, 55);
     }
 
     #[test]
-    fn test_offset_BW1Start() {
+    fn test_offset_bw1_start() {
         let mut seed = Lcg::new(0x48B96278DC6233AB);
         let offset = seed.offset_seed1(OffsetType::Bw1Start);
         let (_tid, _sid) = seed.tid_sid(OffsetType::Bw1Start);
         assert_eq!(offset, 34);
+    }
+
+    #[test]
+    fn test_bw2_tid() {
+        let mut rng = Lcg::new(0x57BC6AEC7078A132);
+        rng.offset_seed0(OffsetType::BW2Start);
+        let (tid, _sid) = rng.tid_sid(OffsetType::BW2Start);
+        assert_eq!(tid, 27754);
     }
 }

@@ -27,6 +27,17 @@ impl Lcg {
     }
 }
 
+pub fn get_frigate_pass(tid: u16) -> &'static str {
+    match tid % 256 % 5 {
+        0 => "RESHIRAM",
+        1 => "ZEKROM",
+        2 => "9909",
+        3 => "7707",
+        4 => "2202",
+        _ => " "
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
