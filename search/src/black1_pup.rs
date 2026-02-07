@@ -1,5 +1,10 @@
+use std::collections::HashSet;
+
 use infra::gpu::context::GpuContext;
 use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
+use rng_core::lcg::{Lcg, OffsetType};
+use rng_core::lcg::nature::Nature;
+use rng_core::lcg::wild_poke::WildPoke;
 use rng_core::models::game_date::GameDate;
 use rng_core::models::*;
 use rng_core::result_base::ResultBase;
@@ -25,14 +30,16 @@ pub struct PupSearchResult {
     pub second: u8,
     pub key_presses: KeyPresses,
     pub ivs: [u8; 6],
+    pub wild_advances: Vec<u32>,
 }
 
 
 const BATCH_DATES: usize = 256;
 
-pub async fn search(ds_config: DSConfig) -> Vec<PupSearchResult> {
+pub async fn search(ds_config: DSConfig, wild_max_advances: u32) -> Vec<PupSearchResult> {
     let ctx = GpuContext::new().await;
     let mut results = Vec::new();
+    let mut seen_seed0: HashSet<u64> = HashSet::new();
 
     let iv_min: [u32; 6] = [30, 31, 30, 0, 30, 31];
     let iv_max: [u32; 6] = [31, 31, 31, 31, 31, 31];
@@ -52,13 +59,13 @@ pub async fn search(ds_config: DSConfig) -> Vec<PupSearchResult> {
         for &(month, day) in &TARGET_DATES {
             dates.push(GameDate { year, month, day });
             if dates.len() >= BATCH_DATES {
-                collect_gpu_results(&ctx, ds_config, &params, &dates, &mut results).await;
+                collect_gpu_results(&ctx, ds_config, wild_max_advances, &params, &dates, &mut results, &mut seen_seed0).await;
                 dates.clear();
             }
         }
     }
     if !dates.is_empty() {
-        collect_gpu_results(&ctx, ds_config, &params, &dates, &mut results).await;
+        collect_gpu_results(&ctx, ds_config, wild_max_advances, &params, &dates, &mut results, &mut seen_seed0).await;
     }
 
     results
@@ -67,9 +74,11 @@ pub async fn search(ds_config: DSConfig) -> Vec<PupSearchResult> {
 async fn collect_gpu_results(
     ctx: &GpuContext,
     ds_config: DSConfig,
+    wild_max_advances: u32,
     params: &GpuInputParams,
     dates: &[GameDate],
     results: &mut Vec<PupSearchResult>,
+    seen_seed0: &mut HashSet<u64>,
 ) {
     let base_results = match run_result_base_seedhigh_by_dates(ctx, ds_config, params, dates, BATCH_DATES).await {
         Ok(v) => v,
@@ -85,6 +94,14 @@ async fn collect_gpu_results(
             ivs,
             ..
         } = base;
+        if !seen_seed0.insert(seed0) {
+            continue;
+        }
+
+        let wild_advances = find_wild_poke_advances(seed0, wild_max_advances);
+        if wild_advances.is_empty() {
+            continue;
+        }
         results.push(PupSearchResult {
             seed0,
             seed1,
@@ -96,8 +113,32 @@ async fn collect_gpu_results(
             second: game_time.second,
             key_presses,
             ivs,
+            wild_advances,
         });
     }
+}
+
+fn find_wild_poke_advances(seed0: u64, max_advances: u32) -> Vec<u32> {
+    let mut seed = Lcg::new(seed0);
+    seed.offset_seed0(OffsetType::Bw1Continue);
+    let mut out = Vec::new();
+    for i in 0..max_advances {
+        seed.next();
+        let pup = seed.get_wild_poke();
+        if is_target_wild_poke(&pup) {
+            out.push(i + 1);
+        }
+    }
+    out
+}
+
+fn is_target_wild_poke(pup: &WildPoke) -> bool {
+    let slot_ok = matches!(pup.slot, Some(94..=97) | Some(99));
+    let nature_ok = pup.nature.as_ref() == Some(&Nature::new(3));
+    let ability_ok = pup.ability().is_some_and(|v|v == 1);
+    let gender_ok = pup.gender().is_some_and(|g| g >= 177);
+
+    slot_ok && nature_ok && ability_ok && gender_ok
 }
 
 #[cfg(test)]
@@ -115,11 +156,26 @@ mod tests {
             MAC : 0x9bf6d93ce,
         };
         let start = Instant::now();
-        let results = pollster::block_on(async { search(ds_config).await });
+        let results = pollster::block_on(async { search(ds_config, 70).await });
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);
         println!("Total results: {}", results.len());
+        for r in results.iter() {
+            println!(
+                "seed0={:016X} seed1={:016X} year={:02} date={:02}/{:02} time={:02}:{:02}:{:02} kp={:?} ivs={:?} advances={:?}",
+                r.seed0,
+                r.seed1,
+                r.year,
+                r.month,
+                r.day,
+                r.hour,
+                r.minute,
+                r.second,
+                r.key_presses.pressed_keys_string(),
+                r.ivs,
+                r.wild_advances
+            );
+        }
     }
 }
-

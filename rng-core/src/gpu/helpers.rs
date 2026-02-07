@@ -5,6 +5,7 @@ use crate::gpu::staging_layout::candidate_game_time;
 use crate::lcg::lcg_next;
 use crate::models::game_date::GameDate;
 use crate::models::{DSConfig, KeyPresses};
+use crate::mt;
 use crate::result_base::ResultBase;
 
 #[derive(Clone, Copy)]
@@ -170,7 +171,7 @@ fn build_result_base_from_candidates(
         let game_time = candidate_game_time(&cand);
         let seed0 = cand.seed0;
         let seed1 = lcg_next(seed0);
-        let ivs: [u8; 6] = [31; 6];
+        let ivs: [u8; 6] = mt::mt_1(seed1, 0);
 
         results.push(ResultBase {
             ds_config,
