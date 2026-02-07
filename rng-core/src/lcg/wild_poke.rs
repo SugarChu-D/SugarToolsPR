@@ -10,6 +10,18 @@ pub struct WildPoke {
     pub item: Option<u32>,
 }
 
+impl WildPoke {
+    pub fn ability(&self) -> Option<u8>{
+        if self.poke_code.is_none() {return None}
+        Some((self.poke_code.unwrap() & 1) as u8)
+    }
+
+    pub fn gender(&self) -> Option<u8> {
+        if self.poke_code.is_none() {return None}
+        Some((self.poke_code.unwrap() & 0xFF) as u8)
+    }
+}
+
 impl Lcg {
     pub fn get_wild_poke(&mut self) -> WildPoke {
         let mut lcg_local = self.clone();
@@ -34,12 +46,13 @@ mod tests {
     #[test]
     fn test_get_pup() {
         let mut seed = Lcg::new(0x45758423BB8FCDB8);
-        seed.advance(83);
+        seed.offset_seed1(crate::lcg::OffsetType::Bw1Continue);
+        seed.advance(41);
         let pup = seed.get_wild_poke();
 
         println!(
-            "slot={:?}, poke_code={:?}, nature={:?}, item={:?}",
-            pup.slot, pup.poke_code, pup.nature, pup.item
+            "slot={:?}, poke_code={:?}, nature={:?}, gender={:?}, item={:?}",
+            pup.slot, pup.poke_code, pup.ability(), pup.gender(), pup.item
         );
     }
 }
