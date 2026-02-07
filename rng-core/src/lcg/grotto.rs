@@ -9,7 +9,7 @@ pub struct Grotto {
 
 #[derive(Debug, Clone)]
 pub struct Grottos {
-    grottos: [Grotto; 20]
+    pub grottos: [Grotto; 20]
 }
 
 impl Grottos {

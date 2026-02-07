@@ -1,6 +1,6 @@
 [workspace]
 members = [
     "rng-core",
-    "cli", "search", "infra",
+    "cli", "search", "infra", "white2_tepig-cli",
 ]
 resolver = "2"

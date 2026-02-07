@@ -1,0 +1,10 @@
+{
+    "ds_configs": {
+        "profile1": {
+            "version": "White2",
+            "timer0": "0x10FA",
+            "is_dslite": false,
+            "mac": "0x0009bf6d93ce"
+        }
+    }
+}

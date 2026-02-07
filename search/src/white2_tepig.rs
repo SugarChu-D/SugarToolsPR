@@ -30,7 +30,7 @@ pub struct TepigSearchResult {
 }
 
 const FRAME_ENTERING_ROUTE20: u64 = 430;
-const FRAME_EXITING_ROUTE20: u64 = 490;
+const FRAME_EXITING_ROUTE20: u64 = 510;
 const FRAME_ENTERING_RANCH: u64 = 550;
 const FRAME_EXITING_RANCH: u64 = 630;
 const FRAME_MIN_FOR_CANDY: u64 = 360;
@@ -41,6 +41,8 @@ const MAX_TEPIG_NATURE: u64 = 270;
 const GROTTO_INDEX: usize = 3;
 const GROTTO_SUB_SLOT: u32 = 0;
 const GROTTO_SLOT: u32 = 60;
+const GROTTO_INDEX_2: usize = 19;
+const GROTTO_SLOT_2: u32 = 0;
 
 /**
 繧・ｓ縺｡繧・・繧ｫ繝悶↓蜷医≧蛟倶ｽ灘､縺九←縺・°繧堤｢ｺ縺九ａ繧・
@@ -74,6 +76,12 @@ fn tepig_iv_check(ivs: [u8; 6], nat: &Nature) -> bool {
 
 const BATCH_DATES: usize = 64;
 
+pub async fn white2_tepig_dragonite_search(config: DSConfig, nat: Nature)
+    -> Vec<TepigSearchResult> {
+    let dates = build_all_dates();
+    search_by_dates(config, nat, &dates, find_grotto_advances_with_index19).await
+}
+
 pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8, nat: Nature)
     -> Vec<TepigSearchResult> {
     if year >= 100 || month > 12 || day > 31 {
@@ -84,6 +92,17 @@ pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8,
         panic!("SUMMER MONTH!")
     };
 
+    let dates = [GameDate{ year, month, day }];
+    search_by_dates(config, nat, &dates, find_grotto_advances).await
+}
+
+async fn search_by_dates(
+    config: DSConfig,
+    nat: Nature,
+    dates: &[GameDate],
+    find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
+)
+    -> Vec<TepigSearchResult> {
     let ctx = GpuContext::new().await;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
@@ -94,9 +113,7 @@ pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8,
         any => panic!("Invalid Nature: {}", any.to_string()),
     };
 
-    let dates = [GameDate{ year, month, day }];
-
-    for iv_step in [15u32, 16u32] {
+    for iv_step in [16u32, 17u32] {
         let params = GpuInputParams::new(
             config,
             [0, 23],
@@ -107,75 +124,130 @@ pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8,
             iv_max,
         );
 
-        let base_results = match run_result_base_seedhigh_by_dates(&ctx, config, &params, &dates, BATCH_DATES).await {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-
-        for base in base_results.into_iter() {
-            let seed0 = base.seed0;
-            let seed1 = base.seed1;
-
-            let ivs_15: [u8; 6] = rng_core::mt::mt_1(seed1, 15);
-            let ivs_16: [u8; 6] = rng_core::mt::mt_1(seed1, 16);
-            let ivs: [u8; 6];
-            let tepig_iv_frame: u8;
-
-            if tepig_iv_check(ivs_15, &nat) {
-                ivs = ivs_15;
-                tepig_iv_frame = 15;
-            }
-            else if tepig_iv_check(ivs_16, &nat) {
-                ivs = ivs_16;
-                tepig_iv_frame = 16;
-            }
-            else { continue; }
-
-            let mut rng: Lcg = Lcg::new(seed0);
-            rng.advance(MIN_TEPIG_NATURE - 1);
-
-            let mut tepig_frames = Vec::new();
-
-            for frame in MIN_TEPIG_NATURE..=MAX_TEPIG_NATURE{
-                if rng.get_nature() == nat { tepig_frames.push((frame & 0xFFFFFFFF) as u32) }
-            }
-
-            if tepig_frames.is_empty() { continue; }
-
-            let pidove_frames = find_wild_advances_bw2(seed0, FRAME_ENTERING_ROUTE20, FRAME_EXITING_ROUTE20, is_target_pidove);
-            if pidove_frames.is_empty() { continue; }
-
-            let psyduck_frames = find_wild_advances_bw2(seed0, FRAME_ENTERING_RANCH, FRAME_EXITING_RANCH, is_target_psyduck);
-            if psyduck_frames.is_empty() { continue; }
-
-            let candy_frames = find_grotto_advances(seed0, FRAME_MIN_FOR_CANDY, FRAME_MAX_FOR_CANDY);
-            if candy_frames.is_empty() { continue; }
-
-            if !seen_seed0.insert(seed0) {
+        let mut date_batch = Vec::with_capacity(BATCH_DATES);
+        for &date in dates {
+            date_batch.push(date);
+            if date_batch.len() < BATCH_DATES {
                 continue;
             }
-
-            results.push(TepigSearchResult {
-                seed0,
-                seed1,
-                year: base.game_time.year,
-                month: base.game_time.month,
-                day: base.game_time.day,
-                hour: base.game_time.hour,
-                minute: base.game_time.minute,
-                second: base.game_time.second,
-                key_presses: base.key_presses.pressed_keys_string(),
-                ivs,
-                tepig_iv_step: tepig_iv_frame,
-                tepig_frames,
-                candy_frames,
-                pidove_frames,
-                psyduck_frames,
-            });
+            collect_gpu_results(
+                &ctx,
+                config,
+                nat.clone(),
+                iv_step,
+                find_grotto,
+                &params,
+                &date_batch,
+                &mut results,
+                &mut seen_seed0,
+            ).await;
+            date_batch.clear();
+        }
+        if !date_batch.is_empty() {
+            collect_gpu_results(
+                &ctx,
+                config,
+                nat.clone(),
+                iv_step,
+                find_grotto,
+                &params,
+                &date_batch,
+                &mut results,
+                &mut seen_seed0,
+            ).await;
         }
     }
 
     results
+}
+
+async fn collect_gpu_results(
+    ctx: &GpuContext,
+    config: DSConfig,
+    nat: Nature,
+    iv_step: u32,
+    find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
+    params: &GpuInputParams,
+    dates: &[GameDate],
+    results: &mut Vec<TepigSearchResult>,
+    seen_seed0: &mut HashSet<u64>,
+) {
+    let base_results = match run_result_base_seedhigh_by_dates(ctx, config, params, dates, BATCH_DATES).await {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+
+    for base in base_results.into_iter() {
+        let seed0 = base.seed0;
+        let seed1 = base.seed1;
+
+        let mut rng: Lcg = Lcg::new(seed0);
+        rng.advance(MIN_TEPIG_NATURE - 1);
+
+        let mut tepig_frames = Vec::new();
+
+        for frame in MIN_TEPIG_NATURE..=MAX_TEPIG_NATURE{
+            if rng.get_nature() == nat { tepig_frames.push((frame & 0xFFFFFFFF) as u32) }
+        }
+
+        if tepig_frames.is_empty() { continue; }
+
+        let pidove_frames = find_wild_advances_bw2(seed0, FRAME_ENTERING_ROUTE20, FRAME_EXITING_ROUTE20, is_target_pidove);
+        if pidove_frames.is_empty() { continue; }
+
+        let psyduck_frames = find_wild_advances_bw2(seed0, FRAME_ENTERING_RANCH, FRAME_EXITING_RANCH, is_target_psyduck);
+        if psyduck_frames.is_empty() { continue; }
+
+        let candy_frames = find_grotto(seed0, FRAME_MIN_FOR_CANDY, FRAME_MAX_FOR_CANDY);
+        if candy_frames.is_empty() { continue; }
+
+        if !seen_seed0.insert(seed0) {
+            continue;
+        }
+
+        let ivs: [u8; 6] = rng_core::mt::mt_1(seed1, iv_step as u8);
+        if !tepig_iv_check(ivs, &nat) {
+            continue;
+        }
+        let tepig_iv_frame: u8 = iv_step as u8;
+
+        results.push(TepigSearchResult {
+            seed0,
+            seed1,
+            year: base.game_time.year,
+            month: base.game_time.month,
+            day: base.game_time.day,
+            hour: base.game_time.hour,
+            minute: base.game_time.minute,
+            second: base.game_time.second,
+            key_presses: base.key_presses.pressed_keys_string(),
+            ivs,
+            tepig_iv_step: tepig_iv_frame,
+            tepig_frames,
+            candy_frames,
+            pidove_frames,
+            psyduck_frames,
+        });
+    }
+}
+
+fn build_all_dates() -> Vec<GameDate> {
+    let mut dates = Vec::new();
+    for year in 0..=99u8 {
+        for month in 1..=12u8 {
+            if month % 4 == 2 {
+                continue;
+            }
+            let days = GameDate::new(year, month, 1).days_in_month();
+            if days == 0 {
+                continue;
+            }
+            for day in 1..=days {
+                dates.push(GameDate { year, month, day });
+            }
+        }
+    }
+    dates
 }
 
 fn find_wild_advances_bw2(
@@ -215,12 +287,33 @@ fn find_grotto_advances(seed0: u64, start: u64, end: u64) -> Vec<(u32, Grottos)>
     for frame in start..=end {
         let mut seed = Lcg::new(seed0);
         seed.advance(frame);
-        let mut grottos = Grottos::new_game();
+        let mut grottos = Grottos::new();
         grottos.fill_grottos(&seed);
-        if let Some(grotto) = grottos.get(GROTTO_INDEX) {
-            if grotto.sub_slot() == Some(GROTTO_SUB_SLOT) && grotto.slot() == Some(GROTTO_SLOT) {
-                out.push((frame as u32, grottos));
-            }
+        let index3_ok = grottos.get(GROTTO_INDEX).is_some_and(|grotto| {
+            grotto.sub_slot() == Some(GROTTO_SUB_SLOT) && grotto.slot() == Some(GROTTO_SLOT)
+        });
+        if index3_ok {
+            out.push((frame as u32, grottos));
+        }
+    }
+    out
+}
+
+fn find_grotto_advances_with_index19(seed0: u64, start: u64, end: u64) -> Vec<(u32, Grottos)> {
+    let mut out: Vec<(u32, Grottos)> = Vec::new();
+    for frame in start..=end {
+        let mut seed = Lcg::new(seed0);
+        seed.advance(frame);
+        let mut grottos = Grottos::new();
+        grottos.fill_grottos(&seed);
+        let index3_ok = grottos.get(GROTTO_INDEX).is_some_and(|grotto| {
+            grotto.sub_slot() == Some(GROTTO_SUB_SLOT) && grotto.slot() == Some(GROTTO_SLOT)
+        });
+        let index19_ok = grottos.get(GROTTO_INDEX_2).is_some_and(|grotto| {
+            grotto.slot() == Some(GROTTO_SLOT_2)
+        });
+        if index3_ok && index19_ok {
+            out.push((frame as u32, grottos));
         }
     }
     out
@@ -243,7 +336,12 @@ mod tests {
 
         let start = Instant::now();
         let results = pollster::block_on(async {
-            white2_tepig_search(ds_config, 74, 1, 14, Nature::new(19)).await // 例: Rash
+            white2_tepig_search(
+                ds_config,
+                74,
+                1,
+                22,
+                Nature::new(4)).await // 例: Rash
         });
         let elapsed = start.elapsed();
 
@@ -251,7 +349,7 @@ mod tests {
         println!("Total results: {}", results.len());
         for r in results.iter() {
             println!(
-                "seed0={:016X} seed1={:016X} date={:02}/{:02} {:02}:{:02}:{:02} kp={} ivs={:?} iv_step={} tepig_frames={:?} pidove={:?} psyduck={:?} grotto={:?}",
+                "seed0={:016X} seed1={:016X} date={:02}/{:02} {:02}:{:02}:{:02} kp={}",
                 r.seed0,
                 r.seed1,
                 r.month,
@@ -260,13 +358,36 @@ mod tests {
                 r.minute,
                 r.second,
                 r.key_presses,
-                r.ivs,
-                r.tepig_iv_step,
-                r.tepig_frames,
-                r.pidove_frames,
-                r.psyduck_frames,
-                r.candy_frames.len(),
             );
+            println!("ivs={:?} iv_step={}", r.ivs, r.tepig_iv_step);
+            println!("Tepig frame: {:?}", r.tepig_frames);
+            println!("Pidove:");
+            for pidove in &r.pidove_frames {
+                println!("{}:{} {}",
+                    pidove.0,
+                    if pidove.1.slot.is_some_and(|s| s < 20) {"Lv.2"} else {"Lv.4"},
+                    pidove.1.nature.clone().unwrap().name(),
+                )
+            }
+
+            println!("PsyDuck:");
+            for psyduck in &r.psyduck_frames {
+                println!("{}:{}",
+                    psyduck.0,
+                    psyduck.1.nature.clone().unwrap().name(),
+                )
+            }
+
+            print!("candy:");
+            for candy in &r.candy_frames {
+                println!("{}: ", candy.0);
+                for i in 0..candy.1.grottos.len() {
+                    if candy.1.grottos[i].slot().is_some() {
+                        println!("#{}: {:?}", i, candy.1.grottos[i]);
+                    }
+                }
+            }
+            println!();
         }
     }
 }
