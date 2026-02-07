@@ -1,8 +1,36 @@
-// SHA-1 with GPU-side expansion of keypresses and time ranges.
+// SHA-1 + MT19937 IVS filter with compacted output (atomic counter)
 //
-// Uses:
-// - key presses are always enumerated as 0x2000..=0x2FFF (invalids have seed0=0).
-// - hour/minute/second ranges are expanded on GPU.
+// Input:
+// - GpuInput array (date + ranges)
+// - DispatchParams (base index, total length)
+//
+// Output:
+// - Only candidates that pass IV range are written to output buffer.
+// - Counter indicates number of outputs (capped at MAX_RESULTS).
+
+const KEY_RANGE_START: u32 = 0x2000u;
+const KEY_RANGE_END: u32 = 0x2FFFu;
+const KP_COUNT: u32 = KEY_RANGE_END - KEY_RANGE_START + 1u;
+
+const M: u32 = 397u;
+const MAX_P: u32 = 20u;
+const TABLE_SIZE: u32 = MAX_P + 6u + M; // 423
+
+const UPPER_MASK: u32 = 0x80000000u;
+const LOWER_MASK: u32 = 0x7fffffffu;
+const MATRIX_A: u32 = 0x9908B0DFu;
+
+const TEMPERING_MASK_B: u32 = 0x9D2C5680u;
+const TEMPERING_MASK_C: u32 = 0xEFC60000u;
+
+const INIT_MULTIPLIER: u32 = 1812433253u;
+
+const LCG_MULTIPLIER_LO: u32 = 0x6C078965u;
+const LCG_MULTIPLIER_HI: u32 = 0x5D588B65u;
+const LCG_INCREMENT_LO: u32 = 0x00269EC3u;
+const LCG_INCREMENT_HI: u32 = 0x00000000u;
+
+const MAX_RESULTS: u32 = 1048576u; // 2^20
 
 struct GpuInput {
     nazo: array<u32, 5>,
@@ -35,6 +63,10 @@ struct OutputBuffer {
     data: array<GpuCandidate>,
 }
 
+struct CounterBuffer {
+    value: atomic<u32>,
+}
+
 struct DispatchParams {
     base_index: u64,
     total_len: u64,
@@ -47,43 +79,10 @@ var<storage, read> input_buf: InputBuffer;
 var<storage, read_write> output_buf: OutputBuffer;
 
 @group(0) @binding(2)
+var<storage, read_write> counter_buf: CounterBuffer;
+
+@group(0) @binding(3)
 var<storage, read> params: DispatchParams;
-
-const KEY_A_BIT: u32 = 0u;
-const KEY_B_BIT: u32 = 1u;
-const KEY_SELECT_BIT: u32 = 2u;
-const KEY_START_BIT: u32 = 3u;
-const KEY_RIGHT_BIT: u32 = 4u;
-const KEY_LEFT_BIT: u32 = 5u;
-const KEY_UP_BIT: u32 = 6u;
-const KEY_DOWN_BIT: u32 = 7u;
-const KEY_R_BIT: u32 = 8u;
-const KEY_L_BIT: u32 = 9u;
-const KEY_X_BIT: u32 = 10u;
-const KEY_Y_BIT: u32 = 11u;
-const KEY_RANGE_START: u32 = 0x2000u;
-const KEY_RANGE_END: u32 = 0x2FFFu;
-const KP_COUNT: u32 = KEY_RANGE_END - KEY_RANGE_START + 1u;
-
-fn key_mask(bit: u32) -> u32 {
-    return 1u << bit;
-}
-
-fn is_valid_keypress(keys: u32) -> bool {
-    if ((keys & key_mask(KEY_UP_BIT)) == 0u) && ((keys & key_mask(KEY_DOWN_BIT)) == 0u) {
-        return false;
-    }
-    if ((keys & key_mask(KEY_LEFT_BIT)) == 0u) && ((keys & key_mask(KEY_RIGHT_BIT)) == 0u) {
-        return false;
-    }
-    if ((keys & key_mask(KEY_L_BIT)) == 0u) &&
-       ((keys & key_mask(KEY_R_BIT)) == 0u) &&
-       ((keys & key_mask(KEY_START_BIT)) == 0u) &&
-       ((keys & key_mask(KEY_SELECT_BIT)) == 0u) {
-        return false;
-    }
-    return true;
-}
 
 fn rotl32(x: u32, n: u32) -> u32 {
     return (x << n) | (x >> (32u - n));
@@ -118,6 +117,49 @@ fn time9_from_hms(hour: u32, minute: u32, second: u32) -> u32 {
     return (hex_hour << 24u) | (hex_min << 16u) | (hex_sec << 8u);
 }
 
+fn tempering(val_in: u32) -> u32 {
+    var val = val_in;
+    val = val ^ (val >> 11u);
+    val = val ^ ((val << 7u) & TEMPERING_MASK_B);
+    val = val ^ ((val << 15u) & TEMPERING_MASK_C);
+    val = val ^ (val >> 18u);
+    return (val >> 27u) & 0xFFu;
+}
+
+fn init_table(table: ptr<function, array<u32, 423>>, seed: u32, init_range: u32) {
+    (*table)[0] = seed;
+    var prev = (*table)[0];
+    for (var i: u32 = 1u; i < TABLE_SIZE; i = i + 1u) {
+        if (i <= init_range) {
+            prev = INIT_MULTIPLIER * (prev ^ (prev >> 30u)) + i;
+            (*table)[i] = prev;
+        } else {
+            (*table)[i] = 0u;
+        }
+    }
+}
+
+fn generate_ivs(table: ptr<function, array<u32, 423>>, p: u32) -> array<u32, 6> {
+    var ivs: array<u32, 6>;
+    for (var j: u32 = 0u; j < 6u; j = j + 1u) {
+        let i = p + j;
+        let x = ((*table)[i] & UPPER_MASK) | ((*table)[i + 1u] & LOWER_MASK);
+        let x_a = (x >> 1u) ^ (select(0u, MATRIX_A, (x & 1u) != 0u));
+        let val = (*table)[i + M] ^ x_a;
+        ivs[j] = tempering(val);
+    }
+    return ivs;
+}
+
+fn ivs_in_range(ivs: array<u32, 6>, minv: array<u32, 6>, maxv: array<u32, 6>) -> bool {
+    for (var i: u32 = 0u; i < 6u; i = i + 1u) {
+        if (ivs[i] < minv[i] || ivs[i] > maxv[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let global = params.base_index + u64(gid.x);
@@ -126,8 +168,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (input_len == 0u) { return; }
 
     let cfg0 = input_buf.data[0];
-    let kp_count = KP_COUNT;
-
     let h_min = cfg0.hour_range[0];
     let h_max = cfg0.hour_range[1];
     let m_min = cfg0.minute_range[0];
@@ -140,7 +180,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let m_count = m_max - m_min + 1u;
     let s_count = s_max - s_min + 1u;
     let time_count = h_count * m_count * s_count;
-    let per_input = u64(kp_count) * u64(time_count);
+    let per_input = u64(KP_COUNT) * u64(time_count);
 
     let input_idx = global / per_input;
     if (input_idx >= u64(input_len)) { return; }
@@ -160,7 +200,6 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let time9 = time9_from_hms(hour, minute, second);
 
     let key_presses = KEY_RANGE_START + u32(kp_idx);
-
     let input = input_buf.data[u32(input_idx)];
 
     // Build message bytes (52 bytes)
@@ -266,12 +305,28 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         (u64(b6) << 48u) |
         (u64(b7) << 56u);
 
-    var out: GpuCandidate;
-    out.seed0 = seed0;
-    out.game_date = input.date_as_data8;
-    out.game_time = time9;
-    out.timer0 = input.vcount_timer0_as_data5;
-    out.key_presses = key_presses;
+    let mult: u64 = (u64(LCG_MULTIPLIER_HI) << 32u) | u64(LCG_MULTIPLIER_LO);
+    let inc: u64 = (u64(LCG_INCREMENT_HI) << 32u) | u64(LCG_INCREMENT_LO);
+    let seed1: u64 = seed0 * mult + inc;
+    let seed_high: u32 = u32(seed1 >> 32u);
 
-    output_buf.data[gid.x] = out;
+    let p = input.iv_step;
+    let init_range = p + 6u + M;
+
+    var table: array<u32, 423>;
+    init_table(&table, seed_high, init_range);
+    let ivs = generate_ivs(&table, p);
+
+    if (ivs_in_range(ivs, input.iv_min, input.iv_max)) {
+        let idx = atomicAdd(&counter_buf.value, 1u);
+        if (idx < MAX_RESULTS) {
+            var out: GpuCandidate;
+            out.seed0 = seed0;
+            out.game_date = input.date_as_data8;
+            out.game_time = time9;
+            out.timer0 = input.vcount_timer0_as_data5;
+            out.key_presses = key_presses;
+            output_buf.data[idx] = out;
+        }
+    }
 }

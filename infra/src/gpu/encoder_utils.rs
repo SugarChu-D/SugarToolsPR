@@ -2,7 +2,12 @@ pub struct EncoderUtils;
 
 impl EncoderUtils {
     pub fn ceil_div(x: u32, divisor: u32) -> u32 {
-        (x + divisor - 1) / divisor
+        if divisor == 0 {
+            return 0;
+        }
+        let x64 = x as u64;
+        let d64 = divisor as u64;
+        ((x64 + d64 - 1) / d64) as u32
     }
 
     pub fn dispatch_1d(

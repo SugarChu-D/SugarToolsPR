@@ -19,6 +19,15 @@ pub struct GpuInput {
     pub iv_max: [u32; 6],
 }
 
+#[derive(Clone, Copy, Pod, Zeroable)]
+#[repr(C)]
+pub struct GpuIvConfig {
+    pub iv_step: u32,
+    pub _pad0: u32,
+    pub iv_min: [u32; 6],
+    pub iv_max: [u32; 6],
+}
+
 
 #[cfg(test)]
 impl GpuInput {
@@ -51,6 +60,44 @@ impl GpuInput {
         }
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::game_date_iterator::GameDateSpec;
+    use crate::models::field_range::FieldRange;
+    use crate::models::game_version::GameVersion;
+
+    #[test]
+    fn test_gpu_input_iterator_next_batch() {
+        let ds_config = DSConfig::new(GameVersion::White2, 0x10F7, false, 0x0009bf6d93ce);
+        let datespec = GameDateSpec {
+            year: FieldRange { min: 33, max: 33 },
+            month: FieldRange { min: 8, max: 8 },
+            day: FieldRange { min: 27, max: 28 },
+        };
+
+        let mut it = GPUInputIterator::new(
+            ds_config,
+            datespec,
+            [0, 23],
+            [0, 59],
+            [0, 59],
+            2,
+            [0; 6],
+            [31; 6],
+        );
+
+        let batch1 = it.next_batch(1);
+        assert_eq!(batch1.len(), 1);
+
+        let batch2 = it.next_batch(4);
+        assert_eq!(batch2.len(), 1);
+
+        let batch3 = it.next_batch(1);
+        assert!(batch3.is_empty());
+    }
 }
 
 /**
@@ -127,6 +174,17 @@ impl GPUInputIterator {
         }
     }
 
+    pub fn next_batch(&mut self, n: usize) -> Vec<GpuInput> {
+        let mut out = Vec::with_capacity(n);
+        for _ in 0..n {
+            match self.next() {
+                Some(item) => out.push(item),
+                None => break,
+            }
+        }
+        out
+    }
+
     #[inline]
     fn advance(&mut self) {
         // 日
@@ -154,4 +212,3 @@ impl GPUInputIterator {
         self.finished = true;
     }
 }
-
