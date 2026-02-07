@@ -119,7 +119,7 @@ mod tests {
 
     #[test]
     fn test_game_date() {
-        let mut date = GameTime::new(26, 1, 24, 23, 59, 59);
+        let date = GameTime::new(26, 1, 24, 23, 59, 59);
         assert_eq!(date.weekday(), 6); // Saturday
         assert_eq!(date.get_date8_format(), 0x26012406);
         assert_eq!(date.year, 26);

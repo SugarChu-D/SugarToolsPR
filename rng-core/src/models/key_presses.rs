@@ -47,7 +47,7 @@ impl KeyPresses {
 
     /// 有効なキー入力かチェック
     /// 無効な組み合わせ：上下同時、左右同時、L・R・Start・Select同時
-    const fn is_valid_raw(keys: u16) -> bool {
+    pub const fn is_valid_raw(keys: u16) -> bool {
         // 上下同時
         if (keys & key_mask(KEY_UP_BIT)) == 0 && (keys & key_mask(KEY_DOWN_BIT)) == 0 {
             return false;

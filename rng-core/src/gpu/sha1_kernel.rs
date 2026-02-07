@@ -620,9 +620,9 @@ pub async fn run_sha1_seedhigh_search(
         iv_max,
     };
 
-    let seed_start = std::time::Instant::now();
+    //let seed_start = std::time::Instant::now();
     let seed_highs = mt_kernel::run_mt_seedhigh_candidates_cached(ctx, &cfg).await?;
-    println!("seed_high elapsed: {:?}", seed_start.elapsed());
+    //println!("seed_high elapsed: {:?}", seed_start.elapsed());
     if seed_highs.is_empty() {
         return Ok(Vec::new());
     }
@@ -655,7 +655,7 @@ pub async fn run_sha1_seedhigh_search(
         }
     }
 
-    println!("sha1 filter elapsed: {:?}", sha_start.elapsed());
+    //println!("sha1 filter elapsed: {:?}", sha_start.elapsed());
     Ok(results)
 }
 
@@ -737,8 +737,8 @@ mod tests {
             let ctx = GpuContext::new().await;
             let ds_config = DSConfig::new(GameVersion::White2, 0x10f7, false, 0x0009bf6d93ce);
             let datespec = GameDateSpec {
-                year: FieldRange { min: 33, max:  33 },
-                month: FieldRange { min: 8, max: 8 },
+                year: FieldRange { min: 0, max:  99 },
+                month: FieldRange { min: 1, max: 12 },
                 day: FieldRange { min: 27, max: 27 },
             };
 
@@ -746,9 +746,9 @@ mod tests {
                 &ctx,
                 ds_config,
                 datespec,
-                [1, 1],
-                [41, 41],
-                [5, 5],
+                [0, 23],
+                [0, 59],
+                [0, 59],
                 2,
                 [31u32, 31u32, 31u32, 8, 31u32, 31u32],
                 [31u32, 31u32, 31u32, 8, 31u32, 31u32],

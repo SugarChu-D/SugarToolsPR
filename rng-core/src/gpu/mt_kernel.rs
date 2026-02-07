@@ -304,15 +304,15 @@ pub async fn run_mt_seedhigh_candidates_cached(
     if let Some(cache) = SEED_HIGH_CACHE.get() {
         if let Ok(map) = cache.lock() {
             if let Some(existing) = map.get(&key) {
-                println!("seed_high cache hit (len={})", existing.len());
+                //println!("seed_high cache hit (len={})", existing.len());
                 return Ok(existing.clone());
             }
         }
     }
 
-    println!("seed_high cache miss; computing");
+    //println!("seed_high cache miss; computing");
     let computed = run_mt_seedhigh_candidates(ctx, config).await?;
-    println!("seed_high computed len={}", computed.len());
+    //println!("seed_high computed len={}", computed.len());
 
     let cache = SEED_HIGH_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
     if let Ok(mut map) = cache.lock() {
