@@ -23,9 +23,23 @@ impl WildPoke {
 }
 
 impl Lcg {
-    pub fn get_wild_poke(&mut self) -> WildPoke {
+    pub fn get_wild_poke_bw1(&mut self) -> WildPoke {
         let mut lcg_local = self.clone();
         if lcg_local.rand(100) > 9 {
+            return WildPoke::default()
+        }
+        let mut result = WildPoke::default();
+        result.slot = Some(lcg_local.rand(100));
+        lcg_local.next();
+        result.poke_code = Some((lcg_local.next() >> 32) as u32);
+        result.nature = Some(lcg_local.get_nature());
+        result.item = Some(lcg_local.rand(100));
+        result
+    }
+
+    pub fn get_wild_poke_bw2(&mut self) -> WildPoke {
+        let mut lcg_local = self.clone();
+        if lcg_local.rand(100) > 20 {
             return WildPoke::default()
         }
         let mut result = WildPoke::default();
@@ -47,7 +61,7 @@ mod tests {
         let mut seed = Lcg::new(0x45758423BB8FCDB8);
         seed.offset_seed1(crate::lcg::OffsetType::Bw1Continue);
         seed.advance(42);
-        let pup = seed.get_wild_poke();
+        let pup = seed.get_wild_poke_bw1();
 
         println!(
             "slot={:?}, poke_code={:?}, nature={:?}, gender={:?}, ability={:?}, item={:?}",

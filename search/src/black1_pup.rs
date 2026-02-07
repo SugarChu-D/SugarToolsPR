@@ -124,7 +124,7 @@ fn find_wild_poke_advances(seed0: u64, max_advances: u32) -> Vec<u32> {
     let mut out = Vec::new();
     for i in 0..max_advances {
         seed.next();
-        let pup = seed.get_wild_poke();
+        let pup = seed.get_wild_poke_bw1();
         if is_target_wild_poke(&pup) {
             out.push(i + 1);
         }
