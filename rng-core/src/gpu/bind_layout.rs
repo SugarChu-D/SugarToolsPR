@@ -158,7 +158,7 @@ pub fn input_list_output_counter_params_layout(device: &wgpu::Device) -> wgpu::B
                 },
                 count: None,
             },
-            // list
+            // seed_high list
             wgpu::BindGroupLayoutEntry {
                 binding: 1,
                 visibility: wgpu::ShaderStages::COMPUTE,
@@ -169,18 +169,18 @@ pub fn input_list_output_counter_params_layout(device: &wgpu::Device) -> wgpu::B
                 },
                 count: None,
             },
-            // output
+            // keypress list
             wgpu::BindGroupLayoutEntry {
                 binding: 2,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
                     has_dynamic_offset: false,
                     min_binding_size: None,
                 },
                 count: None,
             },
-            // counter
+            // output
             wgpu::BindGroupLayoutEntry {
                 binding: 3,
                 visibility: wgpu::ShaderStages::COMPUTE,
@@ -191,9 +191,20 @@ pub fn input_list_output_counter_params_layout(device: &wgpu::Device) -> wgpu::B
                 },
                 count: None,
             },
-            // params
+            // counter
             wgpu::BindGroupLayoutEntry {
                 binding: 4,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            },
+            // params
+            wgpu::BindGroupLayoutEntry {
+                binding: 5,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Storage { read_only: true },

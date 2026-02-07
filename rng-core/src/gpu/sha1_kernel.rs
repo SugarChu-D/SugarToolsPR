@@ -11,7 +11,7 @@ use crate::gpu::input_layout::{GpuInput, GpuIvConfig, GPUInputIterator};
 use crate::gpu::staging_layout::GpuCandidate;
 use crate::gpu::local_gpu_config::GpuKernelConfig;
 use crate::models::game_date_iterator::GameDateSpec;
-use crate::models::DSConfig;
+use crate::models::{DSConfig, KeyPresses};
 use crate::gpu::mt_kernel;
 
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -29,7 +29,7 @@ struct ListDispatchParams {
     base_index: u64,
     total_len: u64,
     list_len: u32,
-    _pad0: u32,
+    keypress_len: u32,
 }
 
 pub async fn run_sha1(
@@ -440,6 +440,14 @@ pub async fn run_sha1_seedhigh_filter(
     input: &[GpuInput],
     seed_high_list: &[u32],
 ) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
+    let keypress_list: Vec<u32> = KeyPresses::iter_valid()
+        .map(|k| k.raw() as u32)
+        .collect();
+    let keypress_count = keypress_list.len() as u32;
+    if keypress_count == 0 {
+        return Ok(Vec::new());
+    }
+
     if input.is_empty() {
         return Ok(Vec::new());
     }
@@ -470,7 +478,7 @@ pub async fn run_sha1_seedhigh_filter(
         return Ok(Vec::new());
     }
 
-    let kp_count = 0x1000usize;
+    let kp_count = keypress_list.len();
     let h_count = (first.hour_range[1] - first.hour_range[0] + 1) as usize;
     let m_count = (first.minute_range[1] - first.minute_range[0] + 1) as usize;
     let s_count = (first.second_range[1] - first.second_range[0] + 1) as usize;
@@ -494,6 +502,9 @@ pub async fn run_sha1_seedhigh_filter(
         .buffer;
     let list_buffer = pool
         .create_init(&list, BufferKind::Input, "rng_core_sha1_seedhigh_list_buffer")
+        .buffer;
+    let keypress_buffer = pool
+        .create_init(&keypress_list, BufferKind::Input, "rng_core_sha1_seedhigh_keypress_buffer")
         .buffer;
 
     let layout = input_list_output_counter_params_layout(&ctx.device);
@@ -530,7 +541,7 @@ pub async fn run_sha1_seedhigh_filter(
             base_index: base,
             total_len: output_len_u64,
             list_len: list.len() as u32,
-            _pad0: 0,
+            keypress_len: keypress_count,
         };
         let params_buffer = pool
             .create_init(std::slice::from_ref(&params), BufferKind::Input, "rng_core_sha1_seedhigh_params_buffer")
@@ -539,9 +550,10 @@ pub async fn run_sha1_seedhigh_filter(
         let bind_group = BindGroupBuilder::new(&layout)
             .buffer(0, &input_buffer)
             .buffer(1, &list_buffer)
-            .buffer(2, &output_buffer)
-            .buffer(3, &counter_buffer)
-            .buffer(4, &params_buffer)
+            .buffer(2, &keypress_buffer)
+            .buffer(3, &output_buffer)
+            .buffer(4, &counter_buffer)
+            .buffer(5, &params_buffer)
             .build(&ctx.device, Some("rng_core_sha1_seedhigh_bind_group"));
 
         let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -723,23 +735,23 @@ mod tests {
     fn test_sha1_seedhigh_search_smoke() {
         pollster::block_on(async {
             let ctx = GpuContext::new().await;
-            let ds_config = DSConfig::new(GameVersion::Black, 0xc7a, false, 0x0009bf6d93ce);
+            let ds_config = DSConfig::new(GameVersion::White2, 0x10f7, false, 0x0009bf6d93ce);
             let datespec = GameDateSpec {
-                year: FieldRange { min: 0, max:  99 },
-                month: FieldRange { min: 1, max: 12 },
-                day: FieldRange { min: 31, max: 31 },
+                year: FieldRange { min: 33, max:  33 },
+                month: FieldRange { min: 8, max: 8 },
+                day: FieldRange { min: 27, max: 27 },
             };
 
             let results = run_sha1_seedhigh_search(
                 &ctx,
                 ds_config,
                 datespec,
-                [0, 23],
-                [0, 59],
-                [0, 59],
-                10,
-                [31u32, 31u32, 31u32, 31, 31u32, 31u32],
-                [31u32, 31u32, 31u32, 31, 31u32, 31u32],
+                [1, 1],
+                [41, 41],
+                [5, 5],
+                2,
+                [31u32, 31u32, 31u32, 8, 31u32, 31u32],
+                [31u32, 31u32, 31u32, 8, 31u32, 31u32],
                 64,
             )
             .await
