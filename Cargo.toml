@@ -2,5 +2,6 @@
 members = [
     "rng-core",
     "cli", "search", "infra", "white2_tepig-cli",
+    "white2-dragonite-cli",
 ]
 resolver = "2"

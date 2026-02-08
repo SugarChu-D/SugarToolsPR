@@ -240,6 +240,11 @@ fn process_base_results(
                 BW2Mode::Challenge => rng.offset_seed0(OffsetType::BW2StartChallengeMode),
             };
 
+            let candy_frames = find_grotto(seed0, FRAME_MIN_FOR_CANDY, FRAME_MAX_FOR_CANDY);
+            if candy_frames.is_empty() {
+                return None;
+            }
+
             let ivs_16: [u8; 6] = rng_core::mt::mt_1(seed1, 16);
             let ivs_17: [u8; 6] = rng_core::mt::mt_1(seed1, 17);
             let ivs: [u8; 6];
@@ -293,10 +298,7 @@ fn process_base_results(
                 return None;
             }
 
-            let candy_frames = find_grotto(seed0, FRAME_MIN_FOR_CANDY, FRAME_MAX_FOR_CANDY);
-            if candy_frames.is_empty() {
-                return None;
-            }
+            
 
             Some(TepigSearchResult {
                 seed0,
