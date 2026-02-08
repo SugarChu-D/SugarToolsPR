@@ -113,7 +113,7 @@ pub async fn run_result_base_by_dates(
     batch_size: usize,
 ) -> Result<Vec<ResultBase>, wgpu::BufferAsyncError> {
     let candidates = run_sha1_mt_compact_by_dates(ctx, params, dates, batch_size).await?;
-    Ok(build_result_base_from_candidates(ds_config, candidates))
+    Ok(build_result_base_from_candidates(ds_config, candidates, params.iv_step))
 }
 
 pub async fn run_result_base_seedhigh_by_dates(
@@ -145,13 +145,13 @@ pub async fn run_result_base_seedhigh_by_dates(
         inputs.push(params.with_date(date));
         if inputs.len() >= batch {
             let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
-            results.append(&mut build_result_base_from_candidates(ds_config, chunk));
+            results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
             inputs.clear();
         }
     }
     if !inputs.is_empty() {
         let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
-        results.append(&mut build_result_base_from_candidates(ds_config, chunk));
+        results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
     }
 
     Ok(results)
@@ -184,13 +184,13 @@ pub async fn run_result_base_seedhigh_by_dates_multi_iv(
         inputs.push(params.with_date(date));
         if inputs.len() >= batch {
             let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
-            results.append(&mut build_result_base_from_candidates(ds_config, chunk));
+            results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
             inputs.clear();
         }
     }
     if !inputs.is_empty() {
         let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
-        results.append(&mut build_result_base_from_candidates(ds_config, chunk));
+        results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
     }
 
     Ok(results)
@@ -199,6 +199,7 @@ pub async fn run_result_base_seedhigh_by_dates_multi_iv(
 fn build_result_base_from_candidates(
     ds_config: DSConfig,
     candidates: Vec<crate::gpu::staging_layout::GpuCandidate>,
+    iv_step: u32,
 ) -> Vec<ResultBase> {
     let mut results = Vec::with_capacity(candidates.len());
     for cand in candidates {
@@ -210,7 +211,7 @@ fn build_result_base_from_candidates(
         let game_time = candidate_game_time(&cand);
         let seed0 = cand.seed0;
         let seed1 = lcg_next(seed0);
-        let ivs: [u8; 6] = mt::mt_1(seed1, 0);
+        let ivs: [u8; 6] = mt::mt_1(seed1, (iv_step & 0xFF) as u8);
 
         results.push(ResultBase {
             ds_config,
