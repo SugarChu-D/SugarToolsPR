@@ -89,7 +89,7 @@ const BATCH_DATES: usize = 256;
 pub async fn white2_tepig_dragonite_search(config: DSConfig, nat: Nature, mode: BW2Mode)
     -> Vec<TepigSearchResult> {
     let dates = build_all_dates();
-    search_by_dates(config, nat, &dates, mode, find_grotto_advances_candy_dragonite).await
+    tepig_search_by_dates(config, nat, &dates, mode, find_grotto_advances_candy_dragonite).await
 }
 
 pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8, nat: Nature, mode: BW2Mode)
@@ -103,10 +103,10 @@ pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8,
     };
 
     let dates = [GameDate{ year, month, day }];
-    search_by_dates(config, nat, &dates, mode, find_grotto_advances_candy).await
+    tepig_search_by_dates(config, nat, &dates, mode, find_grotto_advances_candy).await
 }
 
-async fn search_by_dates(
+async fn tepig_search_by_dates(
     config: DSConfig,
     nat: Nature,
     dates: &[GameDate],
