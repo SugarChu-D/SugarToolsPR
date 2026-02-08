@@ -11,7 +11,7 @@ use rng_core::lcg::grotto::Grottos;
 use rng_core::lcg::nature::Nature as Nature;
 use rng_core::lcg::wild_poke::WildPoke;
 use rng_core::models::DSConfig as DSConfig;
-use rng_core::models::game_date::GameDate;
+use rng_core::models::game_date::{GameDate, build_date_except_summer};
 
 #[derive(Debug,Clone)]
 pub struct TepigSearchResult {
@@ -88,7 +88,7 @@ const BATCH_DATES: usize = 256;
 
 pub async fn white2_tepig_dragonite_search(config: DSConfig, nat: Nature, mode: BW2Mode)
     -> Vec<TepigSearchResult> {
-    let dates = build_all_dates();
+    let dates = build_date_except_summer();
     tepig_search_by_dates(config, nat, &dates, mode, find_grotto_advances_candy_dragonite).await
 }
 
@@ -245,7 +245,7 @@ fn process_base_results(
                 return None;
             }
 
-            let ivs_16: [u8; 6] = rng_core::mt::mt_1(seed1, 16);
+            let ivs_16: [u8; 6] = base.ivs;
             let ivs_17: [u8; 6] = rng_core::mt::mt_1(seed1, 17);
             let ivs: [u8; 6];
             let tepig_iv_frame: u8;
@@ -322,24 +322,7 @@ fn process_base_results(
         .collect()
 }
 
-fn build_all_dates() -> Vec<GameDate> {
-    let mut dates = Vec::new();
-    for year in 0..=99u8 {
-        for month in 1..=12u8 {
-            if month % 4 == 2 {
-                continue;
-            }
-            let days = GameDate::new(year, month, 1).days_in_month();
-            if days == 0 {
-                continue;
-            }
-            for day in 1..=days {
-                dates.push(GameDate { year, month, day });
-            }
-        }
-    }
-    dates
-}
+
 
 fn find_wild_advances_bw2(
     seed0: u64,

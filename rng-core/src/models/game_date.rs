@@ -66,3 +66,41 @@ impl GameDate {
         ((hex_year as u32) << 24) | ((hex_month as u32) << 16) | ((hex_day as u32) << 8) | self.weekday() as u32
     }
 }
+
+pub fn build_autumn_and_winter() -> Vec<GameDate> {
+    let mut dates = Vec::new();
+    for year in 0..=99u8 {
+        for month in 1..=12u8 {
+            if month % 4 == 2 || month % 4 == 1 {
+                continue;
+            }
+            let days = GameDate::new(year, month, 1).days_in_month();
+            if days == 0 {
+                continue;
+            }
+            for day in 1..=days {
+                dates.push(GameDate { year, month, day });
+            }
+        }
+    }
+    dates
+}
+
+pub fn build_date_except_summer() -> Vec<GameDate> {
+    let mut dates = Vec::new();
+    for year in 0..=99u8 {
+        for month in 1..=12u8 {
+            if month % 4 == 2 {
+                continue;
+            }
+            let days = GameDate::new(year, month, 1).days_in_month();
+            if days == 0 {
+                continue;
+            }
+            for day in 1..=days {
+                dates.push(GameDate { year, month, day });
+            }
+        }
+    }
+    dates
+}
