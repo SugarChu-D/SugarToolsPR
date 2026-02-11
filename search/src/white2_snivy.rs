@@ -10,7 +10,7 @@ use rng_core::lcg::grotto::Grottos;
 use rng_core::lcg::nature::Nature as Nature;
 use rng_core::lcg::wild_poke::WildPoke;
 use rng_core::models::DSConfig as DSConfig;
-use rng_core::models::game_date::{GameDate, build_autumn_and_winter};
+use rng_core::models::game_date::{GameDate, build_date_except_summer};
 
 #[derive(Debug,Clone)]
 pub struct W2SnivySearchResult {
@@ -68,7 +68,7 @@ const BATCH_DATES: usize = 512;
 
 pub async fn white2_snivy_search(config: DSConfig, mode: BW2Mode)
     -> Vec<W2SnivySearchResult> {
-    let dates = build_autumn_and_winter();
+    let dates = build_date_except_summer();
     snivy_search_by_dates(config, &dates, mode, find_grotto_advances_candy).await
 }
 
@@ -265,7 +265,7 @@ fn process_base_results(
             let patrat_frames = find_wild_advances_bw2(
                 seed0,
                 800,
-                1100,
+                1000,
                 is_target_patrat
             );
             if patrat_frames.is_empty() {
@@ -319,7 +319,7 @@ fn find_wild_advances_bw2(
 }
 
 fn is_target_pidove(dov: &WildPoke) -> bool {
-    matches!(dov.slot, Some(0..20) | Some(80..85))
+    matches!(dov.slot, Some(0..20))
 }
 
 fn is_target_psyduck(duck: &WildPoke) -> bool {
@@ -330,10 +330,11 @@ fn is_target_psyduck(duck: &WildPoke) -> bool {
 }
 
 fn is_target_patrat(rat: &WildPoke) -> bool {
-    let slot_ok = matches!(rat.slot, Some(40..50));
+    let slot_lv2 = matches!(rat.slot, Some(0..20));
+    let slot_lv3 = matches!(rat.slot, Some(40..50));
     let nat_ok = rat.nature.as_ref().is_some_and(|n|matches!(n.id(), 1|11|16|21));
 
-    slot_ok && nat_ok
+    slot_lv2 || (slot_lv3 && nat_ok)
 }
 
 fn find_grotto_advances_candy(seed0: u64, start: u64, end: u64) -> Vec<(u32, Grottos)> {
@@ -384,11 +385,7 @@ impl W2SnivySearchResult {
             println!("Tepig frame: {:?}", self.tepig_frames);
             println!("Pidove:");
             for pidove in &self.pidove_frames {
-                println!("{}:{} {}",
-                    pidove.0,
-                    if pidove.1.slot.is_some_and(|s| s < 20) {"Lv.2"} else {"Lv.4"},
-                    pidove.1.nature.clone().unwrap().name(),
-                )
+                println!("{}:{}", pidove.0, pidove.1.nature.as_ref().unwrap().name())
             }
 
             println!("PsyDuck:");
