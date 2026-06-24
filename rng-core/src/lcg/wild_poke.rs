@@ -1,6 +1,6 @@
 use crate::lcg::nature::Nature;
 
-use super::Lcg;
+use super::{Lcg, OffsetType};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct WildPoke {
@@ -50,6 +50,27 @@ impl Lcg {
         result.item = Some(lcg_local.rand(100));
         result
     }
+}
+
+pub fn find_wild_advances_bw1(
+    seed0: u64,
+    min_advances: u32,
+    max_advances: u32,
+    is_target: &dyn Fn(&WildPoke) -> bool,
+) -> Vec<u32> {
+    let mut seed = Lcg::new(seed0);
+    seed.offset_seed0(OffsetType::Bw1Continue);
+
+    let mut out = Vec::new();
+    seed.advance(min_advances.into());
+    for advance in min_advances..max_advances {
+        seed.next();
+        let wild_poke = seed.get_wild_poke_bw1();
+        if is_target(&wild_poke) {
+            out.push(advance + 1);
+        }
+    }
+    out
 }
 
 #[cfg(test)]
