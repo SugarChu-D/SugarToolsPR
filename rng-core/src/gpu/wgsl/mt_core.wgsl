@@ -1,16 +1,6 @@
-// MT19937 IVS generation + range filter (based on rng-core/src/mt.rs)
-//
-// Input:
-// - seed0 from GpuCandidate
-// - iv_step and iv_min/iv_max from GpuInput (same index)
-//
-// Output:
-// - If ivs are within range, seed0 is preserved.
-// - Otherwise seed0 is set to 0 (caller can discard).
-
 const M: u32 = 397u;
 const MAX_P: u32 = 20u;
-const TABLE_SIZE: u32 = MAX_P + 6u + M; // 423
+const TABLE_SIZE: u32 = MAX_P + 6u + M;
 
 const UPPER_MASK: u32 = 0x80000000u;
 const LOWER_MASK: u32 = 0x7fffffffu;
@@ -25,50 +15,6 @@ const LCG_MULTIPLIER_LO: u32 = 0x6C078965u;
 const LCG_MULTIPLIER_HI: u32 = 0x5D588B65u;
 const LCG_INCREMENT_LO: u32 = 0x00269EC3u;
 const LCG_INCREMENT_HI: u32 = 0x00000000u;
-
-struct GpuInput {
-    nazo: array<u32, 5>,
-    vcount_timer0_as_data5: u32,
-    mac: u64,
-    gxframe_xor_frame: u32,
-    date_as_data8: u32,
-    hour_range: array<u32, 2>,
-    minute_range: array<u32, 2>,
-    second_range: array<u32, 2>,
-    _pad0: u32,
-    iv_step: u32,
-    iv_min: array<u32, 6>,
-    iv_max: array<u32, 6>,
-}
-
-struct GpuCandidate {
-    seed0: u64,
-    game_date: u32,
-    game_time: u32,
-    timer0: u32,
-    key_presses: u32,
-}
-
-struct InputBuffer {
-    data: array<GpuCandidate>,
-}
-
-struct ConfigBuffer {
-    data: array<GpuInput>,
-}
-
-struct OutputBuffer {
-    data: array<GpuCandidate>,
-}
-
-@group(0) @binding(0)
-var<storage, read> input_buf: InputBuffer;
-
-@group(0) @binding(1)
-var<storage, read> config_buf: ConfigBuffer;
-
-@group(0) @binding(2)
-var<storage, read_write> output_buf: OutputBuffer;
 
 fn tempering(val_in: u32) -> u32 {
     var val = val_in;
@@ -113,40 +59,17 @@ fn ivs_in_range(ivs: array<u32, 6>, minv: array<u32, 6>, maxv: array<u32, 6>) ->
     return true;
 }
 
-fn u32_add_carry(a: u32, b: u32) -> vec2<u32> {
-    let sum = a + b;
-    let carry = select(0u, 1u, sum < a);
-    return vec2<u32>(sum, carry);
-}
-
-@compute @workgroup_size(256)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let i = gid.x;
-    if (i >= arrayLength(&input_buf.data)) {
-        return;
-    }
-
-    let in_candidate = input_buf.data[i];
-    let cfg_len = arrayLength(&config_buf.data);
-    let cfg_idx = select(i, 0u, cfg_len == 1u);
-    let cfg = config_buf.data[cfg_idx];
-
+fn seed_high_from_seed0(seed0: u64) -> u32 {
     let mult: u64 = (u64(LCG_MULTIPLIER_HI) << 32u) | u64(LCG_MULTIPLIER_LO);
     let inc: u64 = (u64(LCG_INCREMENT_HI) << 32u) | u64(LCG_INCREMENT_LO);
-    let seed1: u64 = in_candidate.seed0 * mult + inc;
-    let seed_high: u32 = u32(seed1 >> 32u);
+    let seed1: u64 = seed0 * mult + inc;
+    return u32(seed1 >> 32u);
+}
 
-    let p = cfg.iv_step;
+fn mt_matches_seed_high(seed_high: u32, p: u32, minv: array<u32, 6>, maxv: array<u32, 6>) -> bool {
     let init_range = p + 6u + M;
-
     var table: array<u32, 423>;
     init_table(&table, seed_high, init_range);
     let ivs = generate_ivs(&table, p);
-
-    var out = in_candidate;
-    if (!ivs_in_range(ivs, cfg.iv_min, cfg.iv_max)) {
-        out.seed0 = u64(0u);
-    }
-
-    output_buf.data[i] = out;
+    return ivs_in_range(ivs, minv, maxv);
 }

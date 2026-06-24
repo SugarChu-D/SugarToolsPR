@@ -76,7 +76,7 @@ impl GpuInputParams {
 
 }
 
-pub async fn run_sha1_mt_compact_by_dates(
+pub async fn run_sha1_mt_by_dates(
     ctx: &infra::gpu::context::GpuContext,
     params: &GpuInputParams,
     dates: &[GameDate],
@@ -92,13 +92,13 @@ pub async fn run_sha1_mt_compact_by_dates(
     for &date in dates {
         inputs.push(params.with_date(date));
         if inputs.len() >= batch {
-            let mut chunk = sha1_kernel::run_sha1_mt_compact(ctx, &inputs).await?;
+            let mut chunk = sha1_kernel::run_sha1_mt(ctx, &inputs).await?;
             results.append(&mut chunk);
             inputs.clear();
         }
     }
     if !inputs.is_empty() {
-        let mut chunk = sha1_kernel::run_sha1_mt_compact(ctx, &inputs).await?;
+        let mut chunk = sha1_kernel::run_sha1_mt(ctx, &inputs).await?;
         results.append(&mut chunk);
     }
 
@@ -112,7 +112,7 @@ pub async fn run_result_base_by_dates(
     dates: &[GameDate],
     batch_size: usize,
 ) -> Result<Vec<ResultBase>, wgpu::BufferAsyncError> {
-    let candidates = run_sha1_mt_compact_by_dates(ctx, params, dates, batch_size).await?;
+    let candidates = run_sha1_mt_by_dates(ctx, params, dates, batch_size).await?;
     Ok(build_result_base_from_candidates(ds_config, candidates, params.iv_step))
 }
 

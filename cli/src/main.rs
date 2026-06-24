@@ -9,6 +9,7 @@ use rng_core::lcg::nature::Nature;
 use rng_core::lcg::wild_poke::WildPoke;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::game_version::GameVersion;
+use search::white2_tepig::BW2Mode::Normal;
 use search::white2_tepig::{
     white2_tepig_dragonite_search, white2_tepig_search, TepigSearchResult,
 };
@@ -146,10 +147,10 @@ fn run_white2_tepig(
     let results = match mode {
         TepigMode::Normal => {
             let (year, month, day) = parse_date(date)?;
-            pollster::block_on(async { white2_tepig_search(ds_config, year, month, day, nat).await })
+            pollster::block_on(async { white2_tepig_search(ds_config, year, month, day, nat, Normal).await })
         }
         TepigMode::Dragonite => {
-            pollster::block_on(async { white2_tepig_dragonite_search(ds_config, nat).await })
+            pollster::block_on(async { white2_tepig_dragonite_search(ds_config, nat, Normal).await })
         }
     };
 

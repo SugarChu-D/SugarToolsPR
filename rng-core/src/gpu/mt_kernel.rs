@@ -9,10 +9,15 @@ use wgpu::util::DeviceExt;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use crate::gpu::bind_layout::{candidate_config_output_layout, candidate_config_output_counter_layout, config_output_counter_params_layout};
-use crate::gpu::input_layout::{GpuInput, GpuIvConfig};
+use crate::gpu::bind_layout::config_output_counter_params_layout;
+use crate::gpu::input_layout::GpuIvConfig;
 use crate::gpu::local_gpu_config::GpuKernelConfig;
-use crate::gpu::staging_layout::GpuCandidate;
+
+const MT_SEEDHIGH_SHADER: &str = concat!(
+    include_str!("wgsl/common_types.wgsl"),
+    include_str!("wgsl/mt_core.wgsl"),
+    include_str!("wgsl/mt_seedhigh_compact.wgsl"),
+);
 
 pub const MAX_RESULTS: usize = 1 << 20;
 
@@ -32,159 +37,6 @@ struct IvKey {
 
 static SEED_HIGH_CACHE: OnceLock<Mutex<HashMap<IvKey, Vec<u32>>>> = OnceLock::new();
 
-pub async fn run_mt(
-    ctx: &infra::gpu::context::GpuContext,
-    candidates: &[GpuCandidate],
-    configs: &[GpuInput],
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
-    assert!(
-        configs.len() == 1 || configs.len() == candidates.len(),
-        "configs must have length 1 or match candidates length"
-    );
-
-    let shader = ShaderLoader::from_wgsl(
-        &ctx.device,
-        Some("rng_core_mt"),
-        include_str!("wgsl/mt.wgsl"),
-    );
-
-    let pool = BufferPool::new(&ctx.device);
-    let candidate_buffer = pool
-        .create_init(candidates, BufferKind::Input, "rng_core_mt_candidate_buffer")
-        .buffer;
-    let config_buffer = pool
-        .create_init(configs, BufferKind::Input, "rng_core_mt_config_buffer")
-        .buffer;
-
-    let output_len = candidates.len();
-    let output_bytes = (output_len * std::mem::size_of::<GpuCandidate>()) as u64;
-    let output_buffer = pool
-        .create::<GpuCandidate>(output_bytes as usize, BufferKind::Output, "rng_core_mt_output_buffer")
-        .buffer;
-
-    let layout = candidate_config_output_layout(&ctx.device);
-    let bind_group = BindGroupBuilder::new(&layout)
-        .buffer(0, &candidate_buffer)
-        .buffer(1, &config_buffer)
-        .buffer(2, &output_buffer)
-        .build(&ctx.device, Some("rng_core_mt_bind_group"));
-
-    let pipeline = PipelineFactory::new(&ctx.device)
-        .create_compute(&shader, &layout, "main");
-
-    let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("rng_core_mt_encoder"),
-    });
-    {
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("rng_core_mt_pass"),
-            timestamp_writes: None,
-        });
-        EncoderUtils::dispatch_1d(
-            &mut pass,
-            &pipeline,
-            &bind_group,
-            output_len as u32,
-            GpuKernelConfig::SHA1_MT.workgroup_size,
-        );
-    }
-    ctx.queue.submit(Some(encoder.finish()));
-
-    let readback = Readback::new(ctx);
-    readback
-        .read_buffer_with_pool::<GpuCandidate>(
-            &pool,
-            &output_buffer,
-            output_len,
-            Some("rng_core_mt_readback"),
-        )
-        .await
-}
-
-pub async fn run_mt_compact(
-    ctx: &infra::gpu::context::GpuContext,
-    candidates: &[GpuCandidate],
-    configs: &[GpuInput],
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
-    assert!(
-        configs.len() == 1 || configs.len() == candidates.len(),
-        "configs must have length 1 or match candidates length"
-    );
-
-    let shader = ShaderLoader::from_wgsl(
-        &ctx.device,
-        Some("rng_core_mt_compact"),
-        include_str!("wgsl/mt_compact.wgsl"),
-    );
-
-    let pool = BufferPool::new(&ctx.device);
-    let candidate_buffer = pool
-        .create_init(candidates, BufferKind::Input, "rng_core_mt_candidate_buffer")
-        .buffer;
-    let config_buffer = pool
-        .create_init(configs, BufferKind::Input, "rng_core_mt_config_buffer")
-        .buffer;
-
-    let output_bytes = (MAX_RESULTS * std::mem::size_of::<GpuCandidate>()) as u64;
-    let output_buffer = pool
-        .create::<GpuCandidate>(output_bytes as usize, BufferKind::Output, "rng_core_mt_output_buffer")
-        .buffer;
-
-    let counter_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("rng_core_mt_counter_buffer"),
-        contents: bytemuck::bytes_of(&0u32),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-    });
-
-    let layout = candidate_config_output_counter_layout(&ctx.device);
-    let bind_group = BindGroupBuilder::new(&layout)
-        .buffer(0, &candidate_buffer)
-        .buffer(1, &config_buffer)
-        .buffer(2, &output_buffer)
-        .buffer(3, &counter_buffer)
-        .build(&ctx.device, Some("rng_core_mt_bind_group"));
-
-    let pipeline = PipelineFactory::new(&ctx.device)
-        .create_compute(&shader, &layout, "main");
-
-    let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("rng_core_mt_encoder"),
-    });
-    {
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("rng_core_mt_pass"),
-            timestamp_writes: None,
-        });
-        EncoderUtils::dispatch_1d(
-            &mut pass,
-            &pipeline,
-            &bind_group,
-            candidates.len() as u32,
-            GpuKernelConfig::SHA1_MT.workgroup_size,
-        );
-    }
-    ctx.queue.submit(Some(encoder.finish()));
-
-    let readback = Readback::new(ctx);
-    let count_vec = readback
-        .read_buffer::<u32>(&counter_buffer, 1, Some("rng_core_mt_count_readback"))
-        .await?;
-    let count = count_vec[0] as usize;
-    if count == 0 {
-        return Ok(Vec::new());
-    }
-
-    let read_len = count.min(MAX_RESULTS);
-    readback
-        .read_buffer_with_pool::<GpuCandidate>(
-            &pool,
-            &output_buffer,
-            read_len,
-            Some("rng_core_mt_readback"),
-        )
-        .await
-}
-
 pub async fn run_mt_seedhigh_candidates(
     ctx: &infra::gpu::context::GpuContext,
     config: &GpuIvConfig,
@@ -192,7 +44,7 @@ pub async fn run_mt_seedhigh_candidates(
     let shader = ShaderLoader::from_wgsl(
         &ctx.device,
         Some("rng_core_mt_seedhigh_compact"),
-        include_str!("wgsl/mt_seedhigh_compact.wgsl"),
+        MT_SEEDHIGH_SHADER,
     );
 
     let pool = BufferPool::new(&ctx.device);

@@ -8,8 +8,6 @@ pub struct SeedResultBase {
     pub key_presses: KeyPresses,
 }
 
-
-
 pub struct SeedIter<'a, I>
 where I:Iterator<Item = (GameTime, KeyPresses)>,
 {
@@ -30,7 +28,6 @@ where T: Iterator<Item = (GameTime, KeyPresses)>,
         Some(SeedResultBase { ds_config:*self.config, seed0, game_time, key_presses })
     }
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -6,6 +6,10 @@ struct OutputBuffer {
     data: array<GpuCandidate>,
 }
 
+struct CounterBuffer {
+    value: atomic<u32>,
+}
+
 struct DispatchParams {
     base_index: u64,
     total_len: u64,
@@ -18,6 +22,9 @@ var<storage, read> input_buf: InputBuffer;
 var<storage, read_write> output_buf: OutputBuffer;
 
 @group(0) @binding(2)
+var<storage, read_write> counter_buf: CounterBuffer;
+
+@group(0) @binding(3)
 var<storage, read> params: DispatchParams;
 
 @compute @workgroup_size(256)
@@ -71,11 +78,27 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let input = input_buf.data[u32(input_idx)];
     let seed0: u64 = sha1_seed0(input, time9, key_presses);
 
-    var out: GpuCandidate;
-    out.seed0 = seed0;
-    out.game_date = input.date_as_data8;
-    out.game_time = time9;
-    out.timer0 = input.vcount_timer0_as_data5;
-    out.key_presses = key_presses;
-    output_buf.data[gid.x] = out;
+    let mult: u64 = (u64(LCG_MULTIPLIER_HI) << 32u) | u64(LCG_MULTIPLIER_LO);
+    let inc: u64 = (u64(LCG_INCREMENT_HI) << 32u) | u64(LCG_INCREMENT_LO);
+    let seed1: u64 = seed0 * mult + inc;
+    let seed_high: u32 = u32(seed1 >> 32u);
+
+    let p = input.iv_step;
+    let init_range = p + 6u + M;
+    var table: array<u32, 423>;
+    init_table(&table, seed_high, init_range);
+    let ivs = generate_ivs(&table, p);
+
+    if (ivs_in_range(ivs, input.iv_min, input.iv_max)) {
+        let idx = atomicAdd(&counter_buf.value, 1u);
+        if (idx < MAX_RESULTS) {
+            var out: GpuCandidate;
+            out.seed0 = seed0;
+            out.game_date = input.date_as_data8;
+            out.game_time = time9;
+            out.timer0 = input.vcount_timer0_as_data5;
+            out.key_presses = key_presses;
+            output_buf.data[idx] = out;
+        }
+    }
 }
