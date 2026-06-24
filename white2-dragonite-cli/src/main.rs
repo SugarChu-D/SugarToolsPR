@@ -22,10 +22,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let config_path = prompt_path("ds_config.json path", &default_config)?;
     let ds_config = load_single_profile(&config_path)?;
 
-    if ds_config.Version != GameVersion::White2 {
+    if ds_config.version != GameVersion::White2 {
         eprintln!(
             "warning: ds_config version is {:?}, expected White2",
-            ds_config.Version
+            ds_config.version
         );
     }
 

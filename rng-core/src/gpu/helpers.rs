@@ -40,13 +40,13 @@ impl GpuInputParams {
             vcfg.nazo_values.nazo4,
             vcfg.nazo_values.nazo5,
         ];
-        let vcount_timer0_as_data5 = ((vcfg.vcount.0 as u32) << 16) | (ds_config.Timer0 as u32);
-        let gxframe_xor_frame = if ds_config.IsDSLite { 0x0600_0006 } else { 0x0600_0008 };
+        let vcount_timer0_as_data5 = ((vcfg.vcount.0 as u32) << 16) | (ds_config.timer0 as u32);
+        let gxframe_xor_frame = if ds_config.is_dslite { 0x0600_0006 } else { 0x0600_0008 };
 
         Self {
             nazo,
             vcount_timer0_as_data5,
-            mac: ds_config.MAC,
+            mac: ds_config.mac_address,
             gxframe_xor_frame,
             hour_range,
             minute_range,
@@ -144,13 +144,13 @@ pub async fn run_result_base_seedhigh_by_dates(
     for &date in dates {
         inputs.push(params.with_date(date));
         if inputs.len() >= batch {
-            let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
+            let chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
             results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
             inputs.clear();
         }
     }
     if !inputs.is_empty() {
-        let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
+        let chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
         results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
     }
 
@@ -183,13 +183,13 @@ pub async fn run_result_base_seedhigh_by_dates_multi_iv(
     for &date in dates {
         inputs.push(params.with_date(date));
         if inputs.len() >= batch {
-            let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
+            let chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
             results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
             inputs.clear();
         }
     }
     if !inputs.is_empty() {
-        let mut chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
+        let chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
         results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
     }
 

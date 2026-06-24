@@ -135,10 +135,10 @@ fn run_white2_tepig(
     output: OutputFormat,
 ) -> Result<(), Box<dyn Error>> {
     let ds_config = load_ds_config(&config_path, &profile)?;
-    if ds_config.Version != GameVersion::White2 {
+    if ds_config.version != GameVersion::White2 {
         eprintln!(
             "warning: profile '{}' is {:?}, expected White2",
-            profile, ds_config.Version
+            profile, ds_config.version
         );
     }
 

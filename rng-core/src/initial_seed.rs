@@ -39,10 +39,10 @@ mod tests {
     fn seed0_iterator_basic() {
         // --- DSConfig ダミー ---
         let config = DSConfig {
-            Version: GameVersion::Black,
-            Timer0: 0xc7a,
-            MAC: 0x0009bf6d93ce,
-            IsDSLite: false,
+            version: GameVersion::Black,
+            timer0: 0xc7a,
+            mac_address: 0x0009bf6d93ce,
+            is_dslite: false,
             // 他のフィールドがあれば適当に固定
         };
 

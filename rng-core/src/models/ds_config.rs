@@ -68,27 +68,27 @@ where
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct DSConfig {
     #[serde(rename = "version")]
-    pub Version: GameVersion,
+    pub version: GameVersion,
     #[serde(rename = "timer0", deserialize_with = "de_u16_hex_or_dec")]
-    pub Timer0: u16,
+    pub timer0: u16,
     #[serde(rename = "is_dslite")]
-    pub IsDSLite: bool,
+    pub is_dslite: bool,
     #[serde(rename = "mac", deserialize_with = "de_u64_hex_or_dec")]
-    pub MAC: u64,
+    pub mac_address: u64,
 }
 
 impl DSConfig {
     pub fn new(version: GameVersion, timer0: u16, is_dslite: bool, mac: u64) -> Self {
         Self {
-            Version: version,
-            Timer0: timer0,
-            IsDSLite: is_dslite,
-            MAC: mac,
+            version,
+            timer0,
+            is_dslite,
+            mac_address: mac,
         }
     }
 
     pub fn get_version_config(&self) -> VersionConfig{
-        VersionConfig::from_version(self.Version)
+        VersionConfig::from_version(self.version)
     }
 }
 
@@ -101,8 +101,8 @@ mod tests {
     fn test_deserialize_hex_mac_and_timer() {
         let j = r#"{ "version": "Black", "timer0": "0x1F", "is_dslite": false, "mac": "0x1234abcd" }"#;
         let cfg: DSConfig = serde_json::from_str(j).expect("parse hex fields");
-        assert_eq!(cfg.Timer0, 0x1F);
-        assert_eq!(cfg.MAC, 0x1234ABCDu64);
+        assert_eq!(cfg.timer0, 0x1F);
+        assert_eq!(cfg.mac_address, 0x1234ABCDu64);
     }
 
     #[test]
@@ -115,10 +115,10 @@ mod tests {
     #[test]
     fn test_dsconfig_new_and_fields() {
         let cfg = DSConfig::new(GameVersion::Black, 0x10FA, true, 0x1234_ABCDu64);
-        assert_eq!(cfg.Version, GameVersion::Black);
-        assert_eq!(cfg.Timer0, 0x10FA);
-        assert!(cfg.IsDSLite);
-        assert_eq!(cfg.MAC, 0x1234_ABCDu64);
+        assert_eq!(cfg.version, GameVersion::Black);
+        assert_eq!(cfg.timer0, 0x10FA);
+        assert!(cfg.is_dslite);
+        assert_eq!(cfg.mac_address, 0x1234_ABCDu64);
     }
 
     #[test]
@@ -126,9 +126,9 @@ mod tests {
         let cfg = DSConfig::new(GameVersion::White2, 0x10FA, false, 0xDEAD_BEEFu64);
         let s = serde_json::to_string(&cfg).expect("serialize");
         let de: DSConfig = serde_json::from_str(&s).expect("deserialize");
-        assert_eq!(de.MAC, cfg.MAC);
-        assert_eq!(de.Timer0, cfg.Timer0);
-        assert_eq!(de.IsDSLite, cfg.IsDSLite);
-        assert_eq!(de.Version, cfg.Version);
+        assert_eq!(de.mac_address, cfg.mac_address);
+        assert_eq!(de.timer0, cfg.timer0);
+        assert_eq!(de.is_dslite, cfg.is_dslite);
+        assert_eq!(de.version, cfg.version);
     }
 }

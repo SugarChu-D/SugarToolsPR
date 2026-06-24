@@ -6,7 +6,7 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
     let mut hasher = Sha1::new();
 
     // ゲームバージョンのnazo値をリトルエンディアンで追加 data[0]-data[4]に対応
-    let version_config = crate::models::VersionConfig::from_version(config.Version);
+    let version_config = crate::models::VersionConfig::from_version(config.version);
     #[cfg(debug_assertions)]
     {
         println!("nazo1: 0x{:08X}", version_config.nazo_values.nazo1);
@@ -22,19 +22,19 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
     hasher.update(version_config.nazo_values.nazo5.to_le_bytes());
 
     // VCountとTimer0をリトルエンディアンで追加 data[5]に対応
-    let vcount_timer0 = ((version_config.vcount.0 as u32) << 16) | (config.Timer0 as u32);
+    let vcount_timer0 = ((version_config.vcount.0 as u32) << 16) | (config.timer0 as u32);
     #[cfg(debug_assertions)]
     {
-        println!("vcount: 0x{:02X}, Timer0: 0x{:04X}", version_config.vcount.0, config.Timer0);
+        println!("vcount: 0x{:02X}, Timer0: 0x{:04X}", version_config.vcount.0, config.timer0);
         println!("vcount_timer0: 0x{:08X}", vcount_timer0);
     }
     hasher.update(vcount_timer0.to_le_bytes());
 
     // MACアドレスの下位16bitをビッグエンディアンで追加 data[6]に対応
-    let mac_lower_16 = (config.MAC & 0xFFFF) as u32;
+    let mac_lower_16 = (config.mac_address & 0xFFFF) as u32;
     #[cfg(debug_assertions)]
     {
-        println!("MAC: 0x{:012X}", config.MAC);
+        println!("MAC: 0x{:012X}", config.mac_address);
         println!("mac_lower_16: 0x{:08X}", mac_lower_16);
     }
     hasher.update(mac_lower_16.to_be_bytes());
@@ -43,10 +43,10 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
     // GxFrame XOR frame の結果をビッグエンディアンで取得し、
     // MACアドレスの中間32itとXORを取ってビッグエンディアンで追加
     const GX_FRAME: u32 = 0x0600_0000; // GxFrameはほぼ固定
-    let frame: u32 = if config.IsDSLite { 6 } else { 8 };
+    let frame: u32 = if config.is_dslite { 6 } else { 8 };
     let gxframe_xor_frame = GX_FRAME ^ frame;
     let gxframe_xor_frame_le = u32::from_be(gxframe_xor_frame);
-    let mac_middle_16 = ((config.MAC >> 16) & 0xFFFFFFFF) as u32;
+    let mac_middle_16 = ((config.mac_address >> 16) & 0xFFFFFFFF) as u32;
     let data7 = gxframe_xor_frame_le ^ mac_middle_16;
     #[cfg(debug_assertions)]
     {

@@ -469,10 +469,10 @@ mod tests {
     #[ignore]
     fn test_white2_tepig_single_date() {
         let ds_config = DSConfig{
-            Version : rng_core::models::GameVersion::White2,
-            Timer0 : 0x10FA,
-            IsDSLite : false,
-            MAC : 0x0009bf6d93ce,
+            version : rng_core::models::GameVersion::White2,
+            timer0 : 0x10FA,
+            is_dslite : false,
+            mac_address : 0x0009bf6d93ce,
         };
 
         let start = Instant::now();
@@ -498,10 +498,10 @@ mod tests {
     #[ignore]
     fn test_white2_tepig_dragonite() {
         let ds_config = DSConfig{
-            Version : rng_core::models::GameVersion::White2,
-            Timer0 : 0x10FA,
-            IsDSLite : false,
-            MAC : 0x0009bf6d93ce,
+            version : rng_core::models::GameVersion::White2,
+            timer0 : 0x10FA,
+            is_dslite : false,
+            mac_address : 0x0009bf6d93ce,
         };
 
         let start = Instant::now();let results = pollster::block_on(async {

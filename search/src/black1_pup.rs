@@ -242,10 +242,10 @@ mod tests {
     #[ignore]
     fn test_black1_pups() {
         let ds_config = DSConfig{
-            Version : GameVersion::Black,
-            Timer0 : 0xc7a,
-            IsDSLite : false,
-            MAC : 0x9bf6d93ce,
+            version : GameVersion::Black,
+            timer0 : 0xc7a,
+            is_dslite : false,
+            mac_address : 0x9bf6d93ce,
         };
         let start = Instant::now();
         let results = pollster::block_on(async { pup_search(ds_config, 70).await });
@@ -275,10 +275,10 @@ mod tests {
     #[ignore]
     fn test_black1_sawk() {
         let ds_config = DSConfig{
-            Version : GameVersion::Black,
-            Timer0 : 0xc7a,
-            IsDSLite : false,
-            MAC : 0x9bf5aa1fc,
+            version : GameVersion::Black,
+            timer0 : 0xc7a,
+            is_dslite : false,
+            mac_address : 0x9bf5aa1fc,
         };
         let start = Instant::now();
         let results = pollster::block_on(async { sawk_search(ds_config,30, 100, 0).await });
