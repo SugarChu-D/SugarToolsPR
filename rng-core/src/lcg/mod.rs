@@ -3,6 +3,8 @@ pub mod TID_impl;
 pub mod nature;
 pub mod grotto;
 pub mod wild_poke;
+pub mod cloud_impl;
+
 pub use offset_impl::OffsetType;
 
 // lcg定数
