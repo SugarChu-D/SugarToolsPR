@@ -27,7 +27,6 @@ impl GameTimeSpec {
     }
 }
 
-
 // イテレータ実装
 pub struct GameTimeIterator {
     current: GameTime,
@@ -107,9 +106,6 @@ impl GameTimeIterator {
         self.finished = true;
     }
 }
-
-
-
 
 #[cfg(test)]
 mod tests{

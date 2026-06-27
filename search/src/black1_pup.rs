@@ -5,7 +5,8 @@ use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
 use rng_core::lcg::nature::Nature;
 use rng_core::lcg::wild_poke::{find_wild_advances_bw1, WildPoke};
 use rng_core::models::game_date::GameDate;
-use rng_core::models::*;
+use rng_core::models::ds_config::DSConfig;
+use rng_core::models::key_presses::KeyPresses;
 use rng_core::result_base::ResultBase;
 
 const TARGET_DATES: [(u8, u8); 6] = [
@@ -237,6 +238,7 @@ fn is_target_sawk(sawk: &WildPoke) -> bool {
 mod tests {
     use std::time::Instant;
     use super::*;
+    use rng_core::models::game_version::GameVersion;
 
     #[test]
     #[ignore]

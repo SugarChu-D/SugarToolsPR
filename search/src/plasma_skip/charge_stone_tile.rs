@@ -1,32 +1,32 @@
 // usable skip tiles
-static FIRST_SKIP_TILE: &[[i32; 2]]  = &[[48, 34]];
+pub static FIRST_SKIP_TILE: &[[i32; 2]]  = &[[48, 34]];
 
-static SECOND_SKIP_TILE_LEFT: &[[i32; 2]] = &[[49, 23]];
-static SECOND_SKIP_TILE_RIGHT: &[[i32; 2]] = &[[50, 24]];
+pub static SECOND_SKIP_TILE_LEFT: &[[i32; 2]] = &[[49, 23]];
+pub static SECOND_SKIP_TILE_RIGHT: &[[i32; 2]] = &[[50, 24]];
 
-static THIRD_SKIP_TILE: &[[i32; 2]] = &[[54, 13], [55,12]];
+pub static THIRD_SKIP_TILE: &[[i32; 2]] = &[[54, 13], [55,12]];
 
-static FOURTH_SKIP_TILE: &[[i32; 2]] = &[[43, 11], [43, 13], [44, 14]];
+pub static FOURTH_SKIP_TILE: &[[i32; 2]] = &[[43, 11], [43, 13], [44, 14]];
 
-static FIFTH_SKIP_TILE: &[[i32; 2]] = &[[45, 8], [47, 8], [47, 6], [47, 4], [45, 4]];
+pub static FIFTH_SKIP_TILE: &[[i32; 2]] = &[[45, 8], [47, 8], [47, 6], [47, 4], [45, 4]];
 
 // usable cloud tiles
 pub static FIRST_CLOUD_TILE: &[[i32; 2]] = &[[49, 33], [50, 33], [51, 33]];
 
-static SECOND_CLOUD_TILE_LEFT: &[[i32; 2]] = &[[50, 21], [51, 21], [52, 21]];
-static SECOND_CLOUD_TILE_RIGHT: &[[i32; 2]] = &[[51, 21], [52, 21]];
+pub static SECOND_CLOUD_TILE_LEFT: &[[i32; 2]] = &[[50, 21], [51, 21], [52, 21]];
+pub static SECOND_CLOUD_TILE_RIGHT: &[[i32; 2]] = &[[51, 21], [52, 21]];
 
-static THIRD_CLOUD_TILE: &[[i32; 2]] = &[[53, 13], [53, 14]];
+pub static THIRD_CLOUD_TILE: &[[i32; 2]] = &[[53, 13], [53, 14]];
 
-static FOURTH_CLOUD_TILE: &[[i32; 2]] = &[[44, 9]];
+pub static FOURTH_CLOUD_TILE: &[[i32; 2]] = &[[44, 9]];
 
-static FIFTH_CLOUD_TILE: &[[i32; 2]] = &[[48, 5], [48, 6], [48, 7], [48, 8]];
+pub static FIFTH_CLOUD_TILE: &[[i32; 2]] = &[[48, 5], [48, 6], [48, 7], [48, 8]];
 
 // charge stone b1F tiles
 pub static CHARGE_STONE_B1F_VALID_TILES: &[[i32; 2]]
     = &[
         [49, 23], [55, 57], [50, 6], [30, 0], [52, 15],
-        [60, 37],[52, 33], [56, 12], [33, 56], [56, 21],
+        [60, 37], [52, 33], [56, 12], [33, 56], [56, 21],
         [44, 56], [53, 34], [25, 52], [37, 26], [46, 4],
         [49, 9], [55, 43], [38, 18], [55, 52], [59, 50],
         [47, 57], [48, 31], [52, 10], [40, 54], [60, 41],
