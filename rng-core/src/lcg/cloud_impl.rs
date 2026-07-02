@@ -40,7 +40,7 @@ impl CloudTileSource for CloudTileLookup {
 
 impl Lcg {
     pub fn can_get_cloud(&mut self) -> bool {
-        self.next() < 0x1999_9999_9999_9999
+        self.next() < 0x1999_9999_ffff_ffff
     }
 
     pub fn get_cloud<T: CloudTileSource + ?Sized>(
@@ -69,7 +69,7 @@ impl Lcg {
         for tile_y in y_min..=y_max {
             for tile_x in x_min..=x_max {
                 let tile = [tile_x, tile_y];
-                if tile != *trainer_tile && map_tile.contains_tile(&tile) {
+                if map_tile.contains_tile(&tile) {
                     valid_tile_count += 1;
                 }
             }
@@ -85,7 +85,7 @@ impl Lcg {
         for tile_y in y_min..=y_max {
             for tile_x in x_min..=x_max {
                 let tile = [tile_x, tile_y];
-                if tile != *trainer_tile && map_tile.contains_tile(&tile) {
+                if map_tile.contains_tile(&tile) {
                     if current_index == target_index {
                         return tile;
                     }
