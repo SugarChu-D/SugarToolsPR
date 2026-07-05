@@ -1,7 +1,8 @@
-use super::Lcg;
+use super::{Lcg, OffsetType};
 use std::cmp::max;
 use std::cmp::min;
 use std::collections::HashSet;
+use super::wild_poke::WildPoke;
 
 static RANGES: [[i32; 4]; 4] = [
     [0, 5, -5, 5],
@@ -95,5 +96,79 @@ impl Lcg {
         }
 
         return [0, 0];
+    }
+
+    pub fn get_cloud_poke(&self) -> WildPoke {
+        let mut lcg_local = self.clone();
+        let trigger = lcg_local.rand(1000);
+        if trigger > 400 {
+            return WildPoke::default()
+        }
+        let mut result = WildPoke::default();
+        lcg_local.next();
+        result.slot = Some(lcg_local.rand(100));
+        lcg_local.next();
+        result.poke_code = Some((lcg_local.next() >> 32) as u32);
+        result.nature = Some(lcg_local.get_nature());
+        result.item = Some(lcg_local.rand(100));
+        result
+    }
+}
+
+pub fn find_cloud_exists_advances(
+    seed0: u64,
+    min_advances: u32,
+    max_advances: u32,
+    offset_type: OffsetType
+) -> Vec<u32> {
+    let mut seed = Lcg::new(seed0);
+    seed.offset_seed0(offset_type);
+
+    let mut out = Vec::new();
+    seed.advance(min_advances.into());
+    for advance in min_advances..max_advances {
+        if seed.can_get_cloud() {
+            out.push(advance);
+        }
+    }
+    out
+}
+
+pub fn find_cloud_poke_advances(
+    seed0: u64,
+    min_advances: u32,
+    max_advances: u32,
+    is_target: &dyn Fn(&WildPoke) -> bool,
+    offset_type: OffsetType
+) -> Vec<u32> {
+    let mut seed = Lcg::new(seed0);
+    seed.offset_seed0(offset_type);
+
+    let mut out = Vec::new();
+    seed.advance(min_advances.into());
+    for advance in min_advances..max_advances {
+        seed.next();
+        let cloud_poke = seed.get_cloud_poke();
+        if is_target(&cloud_poke) {
+            out.push(advance);
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_cloud_poke() {
+        let mut seed = Lcg::new(0xE007EC75D2C40E5A);
+        seed.offset_seed0(OffsetType::BW2Continue);
+        seed.advance(47);
+        let cloud_poke = seed.get_cloud_poke();
+        println!(
+            "Cloud Poke: slot={:?}, poke_code={:?}, nature={:?}, item={:?}",
+            cloud_poke.slot, cloud_poke.poke_code, cloud_poke.nature, cloud_poke.item
+        );
     }
 }

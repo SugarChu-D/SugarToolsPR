@@ -220,7 +220,7 @@ fn is_target_pup(pup: &WildPoke) -> bool {
     let slot_ok = matches!(pup.slot, Some(94..=97) | Some(99));
     let nature_ok = pup.nature.as_ref() == Some(&Nature::new(3));
     let ability_ok = pup.ability().is_some_and(|v|v == 1);
-    let gender_ok = pup.gender().is_some_and(|g| g >= 177);
+    let gender_ok = pup.gender().is_some_and(|g| g >= 127);
 
     slot_ok && nature_ok && ability_ok && gender_ok
 }
