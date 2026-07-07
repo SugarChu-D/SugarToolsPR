@@ -79,23 +79,23 @@ impl KeyPresses {
             };
         }
 
-        push!(KEY_A_BIT, "A");
-        push!(KEY_B_BIT, "B");
-        push!(KEY_X_BIT, "X");
-        push!(KEY_Y_BIT, "Y");
-        push!(KEY_UP_BIT, "UP");
-        push!(KEY_DOWN_BIT, "DOWN");
-        push!(KEY_LEFT_BIT, "LEFT");
-        push!(KEY_RIGHT_BIT, "RIGHT");
-        push!(KEY_L_BIT, "L");
-        push!(KEY_R_BIT, "R");
-        push!(KEY_START_BIT, "START");
-        push!(KEY_SELECT_BIT, "SELECT");
+        push!(KEY_A_BIT, "[A]");
+        push!(KEY_B_BIT, "[B]");
+        push!(KEY_X_BIT, "[X]");
+        push!(KEY_Y_BIT, "[Y]");
+        push!(KEY_UP_BIT, "[↑]");
+        push!(KEY_DOWN_BIT, "[↓]");
+        push!(KEY_LEFT_BIT, "[←]");
+        push!(KEY_RIGHT_BIT, "[→]");
+        push!(KEY_L_BIT, "[L]");
+        push!(KEY_R_BIT, "[R]");
+        push!(KEY_START_BIT, "[St]");
+        push!(KEY_SELECT_BIT, "[Se]");
 
         if keys.is_empty() {
             "none".to_string()
         } else {
-            keys.join(" + ")
+            keys.join("")
         }
     }
     
