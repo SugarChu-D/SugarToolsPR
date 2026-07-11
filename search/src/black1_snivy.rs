@@ -86,29 +86,35 @@ use super::*;
             version: Black,
             timer0: 0xc7a,
             is_dslite: false,
-            mac_address: 0x9bf6d93ce,
+            mac_address: 0x9bf5aa1fc,
         };
 
         let game_time = GameTime {
-            year: 95,
+            year: 32,
             month: 8,
-            day: 30,
-            hour: 22,
-            minute: 58,
-            second: 9,
+            day: 31,
+            hour: 13,
+            minute: 29,
+            second: 13,
         };
 
         let results = search_snivy(ds_config, game_time);
+        println!("seed0, seed1, hour, minute, second, keypresses, H, A, B, C, D, S, nature, advances");
         for r in results {
             println!(
-                "seed0={:016X} seed1={:016X} time={:02}:{:02}:{:02} kp={:?} ivs={:?} nature={}, advances={}",
+                "{:016X},{:016X},{:02},{:02},{:02},{:?},{},{},{},{},{},{},{},{:?}",
                 r.seed0,
                 r.seed1,
                 r.game_time.hour,
                 r.game_time.minute,
                 r.game_time.second,
                 r.key_presses.pressed_keys_string(),
-                r.ivs,
+                r.ivs[0],
+                r.ivs[1],
+                r.ivs[2],
+                r.ivs[3],
+                r.ivs[4],
+                r.ivs[5],
                 r.nature,
                 r.advance
             );
