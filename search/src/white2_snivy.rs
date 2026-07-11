@@ -10,7 +10,7 @@ use rng_core::lcg::grotto::Grottos;
 use rng_core::lcg::nature::Nature as Nature;
 use rng_core::lcg::wild_poke::WildPoke;
 use rng_core::models::DSConfig as DSConfig;
-use rng_core::models::game_date::{GameDate, build_date_except_summer};
+use rng_core::models::game_date::{GameDate, build_autumn_and_winter};
 
 #[derive(Debug,Clone)]
 pub struct W2SnivySearchResult {
@@ -68,7 +68,7 @@ const BATCH_DATES: usize = 512;
 
 pub async fn white2_snivy_search(config: DSConfig, mode: BW2Mode)
     -> Vec<W2SnivySearchResult> {
-    let dates = build_date_except_summer();
+    let dates = build_autumn_and_winter();
     snivy_search_by_dates(config, &dates, mode, find_grotto_advances_candy).await
 }
 
@@ -330,11 +330,11 @@ fn is_target_psyduck(duck: &WildPoke) -> bool {
 }
 
 fn is_target_patrat(rat: &WildPoke) -> bool {
-    let slot_lv2 = matches!(rat.slot, Some(0..20));
+    //let slot_lv2 = matches!(rat.slot, Some(0..20));
     let slot_lv3 = matches!(rat.slot, Some(40..50));
     let nat_ok = rat.nature.as_ref().is_some_and(|n|matches!(n.id(), 1|11|16|21));
 
-    slot_lv2 || (slot_lv3 && nat_ok)
+    (slot_lv3 && nat_ok)
 }
 
 fn find_grotto_advances_candy(seed0: u64, start: u64, end: u64) -> Vec<(u32, Grottos)> {
