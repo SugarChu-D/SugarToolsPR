@@ -1,4 +1,4 @@
-use rng_core::{lcg::{Lcg, OffsetType::Bw1Start, nature::Nature}, models::{FieldRange, GameTime, ds_config::DSConfig, game_time_iterator, key_presses::KeyPresses}, mt::mt_0, result_base::ResultBase};
+use rng_core::{lcg::{Lcg, OffsetType::Bw1Start, nature::Nature}, models::{FieldRange, GameTime, ds_config::DSConfig, game_time_iterator, key_presses::KeyPresses}, mt::mt_0};
 
 #[derive(Debug, Clone)]
 pub struct SnivySearchResult {
