@@ -66,7 +66,7 @@ pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Ve
 
         let second_cloud_left = find_valid_clouds(
             seed_result_base.seed1,
-            first_frame + 49,
+            first_frame + 45,
             first_frame + 85,
             SECOND_SKIP_TILE_LEFT,
             SECOND_CLOUD_TILE_LEFT,
@@ -75,7 +75,7 @@ pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Ve
 
         let second_cloud_right = find_valid_clouds(
             seed_result_base.seed1,
-            first_frame + 49,
+            first_frame + 45,
             first_frame + 85,
             SECOND_SKIP_TILE_RIGHT,
             SECOND_CLOUD_TILE_RIGHT,
@@ -211,35 +211,44 @@ use crate::plasma_skip::charge_stone_tile;
 
     #[test]
     fn test_exisitng_pskip() {
-        let mut lcg = Lcg::new(0xabaa7978d5d90e58);
-        lcg.advance(94);
+        let mut lcg = Lcg::new(0x4f4b4df453468e37);
+        lcg.advance(92);
         let cloud_first = lcg.get_cloud(&[48, 34], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
-        assert_eq!(cloud_first, [49, 33]);
-        println!("{}", lcg.step); // 97
+        assert_eq!(cloud_first, [51, 33]);
 
-        lcg.advance(162 - 94 - 3);
+        lcg.advance(146 - 92 - 3);
 
         let cloud_second = lcg.get_cloud(&[49, 23], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
-        assert_eq!(cloud_second[1], 21);
+        assert_eq!(cloud_second, [51, 21]);
 
-        lcg.advance(240 - 162 - 3);
+        lcg.advance(230 - 146 - 3);
 
         let cloud_third = lcg.get_cloud(&[54, 13], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
-        assert_eq!(cloud_third, [53, 14]);
+        assert_eq!(cloud_third, [53, 13]);
+
+        lcg.advance(323 - 230 - 3);
+
+        let cloud_fourth = lcg.get_cloud(&[44, 14], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
+        assert_eq!(cloud_fourth, [44, 9]);
+
+        lcg.advance(392 - 323 - 3);
+
+        let cloud_fifth = lcg.get_cloud(&[45, 8], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
+        assert_eq!(cloud_fifth, [48, 6]);
     }
     
     #[test]
     #[ignore]
     fn test_plasma_skip_search_spring() {
         let ds_config = DSConfig {
-            version: rng_core::models::GameVersion::Black,
-            timer0: 0xc7a,
+            version: rng_core::models::GameVersion::White,
+            timer0: 0xc68,
             mac_address: 0x0009bf6d93ce,
             is_dslite: false,
         };
 
         let game_date = GameDate {
-            year: 95,
+            year: 00,
             month: 8,
             day: 31,
         };
