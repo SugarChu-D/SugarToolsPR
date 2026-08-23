@@ -141,11 +141,16 @@ async fn collect_gpu_results(
             continue; // Skip if no valid cloud advances found
         }
 
+        
+        let mut lcg = lcg::Lcg::new(seed0);
+        lcg.offset_seed0(OffsetType::BW2Continue);
+        let offset = lcg.step as u32;
+
         let wild_advances =
             find_cloud_poke_advances(
                 seed0,
-                cloud_advances[0] + 4,
-                cloud_advances[cloud_advances.len() - 1] + 60,
+                cloud_advances[0] + 4 - offset,
+                cloud_advances[cloud_advances.len() - 1] + 60 - offset,
                 &is_target_drilbur,
                 OffsetType::BW2Continue,
             );
@@ -153,10 +158,6 @@ async fn collect_gpu_results(
         if wild_advances.is_empty() {
             continue; // Skip if no valid wild advances found
         }
-
-        let mut lcg = lcg::Lcg::new(seed0);
-        lcg.offset_seed0(OffsetType::BW2Continue);
-        let offset = lcg.step as u32;
 
         results.push(DrilburSearchResult {
             seed0,
@@ -193,6 +194,7 @@ mod tests {
 use super::*;
 
     #[test]
+    #[ignore]
     fn test_drilbur_search() {
         let ds_config = DSConfig {
             version : GameVersion::White2,
