@@ -128,7 +128,7 @@ pub fn find_cloud_exists_advances(
     seed.advance(min_advances.into());
     for advance in min_advances..max_advances {
         if seed.can_get_cloud() {
-            out.push(advance);
+            out.push(seed.step as u32);
         }
     }
     out
@@ -150,7 +150,7 @@ pub fn find_cloud_poke_advances(
         seed.next();
         let cloud_poke = seed.get_cloud_poke();
         if is_target(&cloud_poke) {
-            out.push(advance);
+            out.push(seed.step as u32);
         }
     }
     out

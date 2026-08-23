@@ -1,6 +1,6 @@
 
 use infra::gpu::context::GpuContext;
-use rng_core::{gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates}, lcg::{OffsetType, cloud_impl::{find_cloud_exists_advances, find_cloud_poke_advances}, nature::Nature}, models::KeyPresses, result_base::ResultBase};
+use rng_core::{gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates}, lcg::{self, OffsetType, cloud_impl::{find_cloud_exists_advances, find_cloud_poke_advances}, nature::Nature, offset_impl}, models::KeyPresses, result_base::ResultBase};
 
 static GOOD_DATES: &[&[u32]] =&[
     &[], // 0月 存在しないため空白
@@ -30,6 +30,7 @@ pub struct DrilburSearchResult {
     pub second: u8,
     pub key_presses: KeyPresses,
     pub ivs: [u8; 6],
+    pub offset: u32,
     pub cloud_advances: Vec<u32>,
     pub wild_advances: Vec<u32>,
 }
@@ -153,6 +154,10 @@ async fn collect_gpu_results(
             continue; // Skip if no valid wild advances found
         }
 
+        let mut lcg = lcg::Lcg::new(seed0);
+        lcg.offset_seed0(OffsetType::BW2Continue);
+        let offset = lcg.step as u32;
+
         results.push(DrilburSearchResult {
             seed0,
             seed1,
@@ -164,6 +169,7 @@ async fn collect_gpu_results(
             second: game_time.second,
             key_presses,
             ivs,
+            offset,
             cloud_advances,
             wild_advances,
         });
@@ -202,10 +208,10 @@ use super::*;
         let elapsed = start.elapsed();
         println!("Elapsed: {:?}", elapsed);
         println!("Total results: {}", results.len());
-        println!("seed0, seed1, year, month, day, hour, minute, second, key_presses, h, a, b, c, d, s, clouds, advances");
+        println!("seed0, seed1, year, month, day, hour, minute, second, key_presses, h, a, b, c, d, s, offset, clouds, advances");
         for r in results.iter() {
             println!(
-                "{:016X}, {:016X}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
+                "{:016X}, {:016X}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
                 r.seed0,
                 r.seed1,
                 r.year,
@@ -221,6 +227,7 @@ use super::*;
                 r.ivs[3],
                 r.ivs[4],
                 r.ivs[5],
+                r.offset,
                 r.cloud_advances.iter().map(|a| a.to_string()).collect::<Vec<_>>().join("|"),
                 r.wild_advances.iter().map(|a| a.to_string()).collect::<Vec<_>>().join("|"),
             );
