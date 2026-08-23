@@ -67,11 +67,11 @@ impl VersionConfig {
             GameVersion::White2 => Self {
                 game_version: version,
                 nazo_values: NazoValues {
-                    nazo1: 0x0209A8FC,
-                    nazo2: 0x02039AF5,
-                    nazo3: 0x021FF9D0,
-                    nazo4: 0x021FFA24,
-                    nazo5: 0x021FFA24,
+                    nazo1: 0x0209AF28,
+                    nazo2: 0x02039E15,
+                    nazo3: 0x02200050,
+                    nazo4: 0x022000A4,
+                    nazo5: 0x022000A4,
                 },
                 vcount: VCount(0x82),
             },
