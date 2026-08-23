@@ -346,7 +346,7 @@ fn find_wild_advances_bw2(
 }
 
 fn is_target_pidove(dov: &WildPoke) -> bool {
-    matches!(dov.slot, Some(0..20) | Some(80..85))
+    return matches!(dov.slot, Some(0..20) | Some(80..85))
 }
 
 fn is_target_psyduck(duck: &WildPoke) -> bool {

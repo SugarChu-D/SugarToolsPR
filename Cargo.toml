@@ -3,5 +3,6 @@ members = [
     "rng-core",
     "cli", "search", "infra", "white2_tepig-cli",
     "white2-dragonite-cli", "white2-snivy-cli",
+    "white2-whack-a-mole-cli"
 ]
 resolver = "2"
