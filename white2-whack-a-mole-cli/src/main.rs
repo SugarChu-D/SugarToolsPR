@@ -100,7 +100,7 @@ fn build_output_text(results: &[DrilburSearchResult]) -> String {
     out.push_str("seed0, seed1, year, month, day, hour, minute, second, key_presses, h, a, b, c, d, s, clouds, advances\n");
     for result in results {
         let line = format!(
-            "{:016X}, {:016X}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n",
+            "{:016X}, {:016X}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}\n",
             result.seed0,
             result.seed1,
             result.year,
@@ -116,6 +116,7 @@ fn build_output_text(results: &[DrilburSearchResult]) -> String {
             result.ivs[3],
             result.ivs[4],
             result.ivs[5],
+            result.offset,
             result.cloud_advances.iter().map(|a| a.to_string()).collect::<Vec<_>>().join("|"),
             result.wild_advances.iter().map(|a| a.to_string()).collect::<Vec<_>>().join("|"),
         );
