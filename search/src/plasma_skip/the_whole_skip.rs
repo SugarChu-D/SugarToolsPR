@@ -67,7 +67,7 @@ pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Ve
         let second_cloud_left = find_valid_clouds(
             seed_result_base.seed1,
             first_frame + 45,
-            first_frame + 85,
+            first_frame + 75,
             SECOND_SKIP_TILE_LEFT,
             SECOND_CLOUD_TILE_LEFT,
             CHARGE_STONE_B1F_VALID_TILES,
@@ -76,7 +76,7 @@ pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Ve
         let second_cloud_right = find_valid_clouds(
             seed_result_base.seed1,
             first_frame + 45,
-            first_frame + 85,
+            first_frame + 75,
             SECOND_SKIP_TILE_RIGHT,
             SECOND_CLOUD_TILE_RIGHT,
             CHARGE_STONE_B1F_VALID_TILES,
@@ -90,8 +90,8 @@ pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Ve
 
         let third_cloud = find_valid_clouds(
             seed_result_base.seed1,
-            second_frame + 69,
-            second_frame + 95,
+            second_frame + 75,
+            second_frame + 115,
             THIRD_SKIP_TILE,
             THIRD_CLOUD_TILE,
             CHARGE_STONE_B1F_VALID_TILES,
@@ -241,15 +241,15 @@ use crate::plasma_skip::charge_stone_tile;
     #[ignore]
     fn test_plasma_skip_search_spring() {
         let ds_config = DSConfig {
-            version: rng_core::models::GameVersion::White,
-            timer0: 0xc68,
+            version: rng_core::models::GameVersion::Black,
+            timer0: 0xc7a,
             mac_address: 0x0009bf6d93ce,
             is_dslite: false,
         };
 
         let game_date = GameDate {
-            year: 00,
-            month: 8,
+            year: 95,
+            month: 08,
             day: 31,
         };
 

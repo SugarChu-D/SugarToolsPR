@@ -67,9 +67,34 @@ fn seed_high_from_seed0(seed0: u64) -> u32 {
 }
 
 fn mt_matches_seed_high(seed_high: u32, p: u32, minv: array<u32, 6>, maxv: array<u32, 6>) -> bool {
-    let init_range = p + 6u + M;
-    var table: array<u32, 423>;
-    init_table(&table, seed_high, init_range);
-    let ivs = generate_ivs(&table, p);
-    return ivs_in_range(ivs, minv, maxv);
+    let first_index = p;
+    let output_index = p + M;
+    let init_range = output_index + 6u;
+    var first_states: array<u32, 7>;
+    var previous = seed_high;
+    if (first_index == 0u) {
+        first_states[0] = seed_high;
+    }
+
+    for (var i: u32 = 1u; i <= init_range; i = i + 1u) {
+        previous = INIT_MULTIPLIER * (previous ^ (previous >> 30u)) + i;
+
+        if (i >= first_index && i < first_index + 7u) {
+            first_states[i - first_index] = previous;
+        }
+
+        if (i >= output_index && i < output_index + 6u) {
+            let j = i - output_index;
+            let x = (first_states[j] & UPPER_MASK)
+                | (first_states[j + 1u] & LOWER_MASK);
+            let x_a = (x >> 1u) ^ select(0u, MATRIX_A, (x & 1u) != 0u);
+            let value = previous ^ x_a;
+            let iv = tempering(value);
+            if (iv < minv[j] || iv > maxv[j]) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
