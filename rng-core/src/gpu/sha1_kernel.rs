@@ -568,7 +568,7 @@ mod tests {
                 ds_config.get_version_config().nazo_values.nazo4,
                 ds_config.get_version_config().nazo_values.nazo5,
             ],
-                vcount_timer0_as_data5: ((ds_config.get_version_config().vcount.0 as u32) << 16) | (ds_config.timer0 as u32),
+                vcount_timer0_as_data5: (ds_config.get_version_config().vcount as u32) | (ds_config.timer0 as u32),
                 mac: ds_config.mac_address,
                 gxframe_xor_frame: 0x600_0008,
                 date_as_data8: 0x33082706,

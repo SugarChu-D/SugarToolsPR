@@ -22,7 +22,7 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
     hasher.update(version_config.nazo_values.nazo5.to_le_bytes());
 
     // VCountとTimer0をリトルエンディアンで追加 data[5]に対応
-    let vcount_timer0 = ((version_config.vcount.0 as u32) << 16) | (config.timer0 as u32);
+    let vcount_timer0 = (version_config.vcount << 16) | (config.timer0 as u32);
     // #[cfg(debug_assertions)]
     // {
     //     println!("vcount: 0x{:02X}, Timer0: 0x{:04X}", version_config.vcount.0, config.timer0);

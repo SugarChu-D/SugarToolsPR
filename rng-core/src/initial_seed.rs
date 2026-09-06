@@ -34,7 +34,7 @@ where T: Iterator<Item = (GameTime, KeyPresses)>,
 
 #[cfg(test)]
 mod tests {
-    use crate::models::GameVersion;
+    use crate::models::{GameVersion, Region};
 
     use super::*;
 
@@ -43,6 +43,7 @@ mod tests {
         // --- DSConfig ダミー ---
         let config = DSConfig {
             version: GameVersion::Black,
+            region: Region::JPN,
             timer0: 0xc7a,
             mac_address: 0x0009bf6d93ce,
             is_dslite: false,

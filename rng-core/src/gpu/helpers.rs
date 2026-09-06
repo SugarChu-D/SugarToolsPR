@@ -40,7 +40,7 @@ impl GpuInputParams {
             vcfg.nazo_values.nazo4,
             vcfg.nazo_values.nazo5,
         ];
-        let vcount_timer0_as_data5 = ((vcfg.vcount.0 as u32) << 16) | (ds_config.timer0 as u32);
+        let vcount_timer0_as_data5 = (vcfg.vcount << 16) | (ds_config.timer0 as u32);
         let gxframe_xor_frame = if ds_config.is_dslite { 0x0600_0006 } else { 0x0600_0008 };
 
         Self {

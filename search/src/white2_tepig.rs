@@ -470,6 +470,7 @@ mod tests {
     fn test_white2_tepig_single_date() {
         let ds_config = DSConfig{
             version : rng_core::models::GameVersion::White2,
+            region : rng_core::models::Region::JPN,
             timer0 : 0x10FA,
             is_dslite : false,
             mac_address : 0x0009bf6d93ce,
@@ -499,6 +500,7 @@ mod tests {
     fn test_white2_tepig_dragonite() {
         let ds_config = DSConfig{
             version : rng_core::models::GameVersion::White2,
+            region : rng_core::models::Region::JPN,
             timer0 : 0x10FA,
             is_dslite : false,
             mac_address : 0x0009bf6d93ce,
