@@ -1,5 +1,5 @@
 pub mod offset_impl;
-pub mod TID_impl;
+pub mod tid_impl;
 pub mod nature;
 pub mod grotto;
 pub mod wild_poke;

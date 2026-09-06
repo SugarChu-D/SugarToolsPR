@@ -167,7 +167,7 @@ fn find_valid_clouds(
     }
     let mut clouds = Vec::new();
 
-    for frame in frame_start..=frame_end {
+    for _frame in frame_start..=frame_end {
         // if (lcg.step as u32) != frame + offset {
         //     panic!("LCG step does not match expected frame. Expected: {}, Actual: {}, Offset: {}", frame, lcg.step, offset);
         // }

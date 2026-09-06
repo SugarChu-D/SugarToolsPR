@@ -411,7 +411,7 @@ fn find_grotto_advances_candy_dragonite(seed0: u64, start: u64, end: u64) -> Vec
 impl TepigSearchResult {
     #[cfg(test)]
     fn print(&self) {
-        use rng_core::lcg::TID_impl::get_frigate_pass;
+        use rng_core::lcg::tid_impl::get_frigate_pass;
 
         println!(
             "seed0: {:016X} seed1: {:016X} ",

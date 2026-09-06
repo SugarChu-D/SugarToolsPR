@@ -537,7 +537,7 @@ pub async fn run_sha1_seedhigh_search(
     Ok(results)
 }
 
-#[cfg(all(test, not(ci)))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::{DSConfig, GameVersion};

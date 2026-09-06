@@ -197,7 +197,7 @@ pub async fn run_mt_seedhigh_candidates_cached_multi(
     Ok(combined)
 }
 
-#[cfg(all(test, not(ci)))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use infra::gpu::context::GpuContext;

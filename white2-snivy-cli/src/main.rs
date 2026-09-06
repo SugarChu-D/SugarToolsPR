@@ -4,7 +4,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
-use rng_core::lcg::TID_impl::get_frigate_pass;
+use rng_core::lcg::tid_impl::get_frigate_pass;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::game_version::GameVersion;
 use search::white2_snivy::{BW2Mode, W2SnivySearchResult, white2_snivy_search};
