@@ -190,6 +190,7 @@ use super::*;
     fn test_drilbur_search() {
         let ds_config = DSConfig {
             version : GameVersion::White2,
+            region : rng_core::models::Region::JPN,
             timer0 : 0x10FA,
             is_dslite : false,
             mac_address : 0x9bf6d93ce,

@@ -75,7 +75,7 @@ pub fn search_snivy(
 
 #[cfg(test)]
 mod tests {
-    use rng_core::models::GameVersion::Black;
+    use rng_core::models::{GameVersion::Black, Region};
 
 use super::*;
 
@@ -84,6 +84,7 @@ use super::*;
     fn test_snivy_search() {
         let ds_config = DSConfig {
             version: Black,
+            region: Region::JPN,
             timer0: 0xc7a,
             is_dslite: false,
             mac_address: 0x9bf5aa1fc,

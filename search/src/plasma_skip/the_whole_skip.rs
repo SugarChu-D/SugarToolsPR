@@ -242,6 +242,7 @@ use crate::plasma_skip::charge_stone_tile;
     fn test_plasma_skip_search_spring() {
         let ds_config = DSConfig {
             version: rng_core::models::GameVersion::Black,
+            region: rng_core::models::Region::JPN,
             timer0: 0xc7a,
             mac_address: 0x0009bf6d93ce,
             is_dslite: false,

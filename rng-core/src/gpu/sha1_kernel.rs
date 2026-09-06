@@ -554,7 +554,7 @@ mod tests {
             let ctx = GpuContext::new().await;
             let start = std::time::Instant::now();
 
-            let ds_config = DSConfig::new(GameVersion::White2, 0x10F7, false, 0x0009bf6d93ce);
+            let ds_config = DSConfig::new(GameVersion::White2, crate::models::Region::JPN, 0x10F7, false, 0x0009bf6d93ce);
             
             let p = 2u32;
             let iv_min: [u32; 6] = [31u32, 31u32, 31u32, 8, 31u32, 31u32];
@@ -568,7 +568,7 @@ mod tests {
                 ds_config.get_version_config().nazo_values.nazo4,
                 ds_config.get_version_config().nazo_values.nazo5,
             ],
-                vcount_timer0_as_data5: ((ds_config.get_version_config().vcount.0 as u32) << 16) | (ds_config.timer0 as u32),
+                vcount_timer0_as_data5: (ds_config.get_version_config().vcount as u32) | (ds_config.timer0 as u32),
                 mac: ds_config.mac_address,
                 gxframe_xor_frame: 0x600_0008,
                 date_as_data8: 0x33082706,
@@ -613,7 +613,7 @@ mod tests {
     fn test_sha1_seedhigh_search_smoke() {
         pollster::block_on(async {
             let ctx = GpuContext::new().await;
-            let ds_config = DSConfig::new(GameVersion::White2, 0x10f7, false, 0x0009bf6d93ce);
+            let ds_config = DSConfig::new(GameVersion::White2,crate::models::Region::JPN, 0x10f7, false, 0x0009bf6d93ce);
             let datespec = GameDateSpec {
                 year: FieldRange { min: 0, max:  99 },
                 month: FieldRange { min: 1, max: 12 },

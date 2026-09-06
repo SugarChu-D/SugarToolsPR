@@ -1,4 +1,4 @@
-use crate::models::{VersionConfig, game_version::GameVersion};
+use crate::models::{VersionConfig, game_version::{GameVersion, Region}};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 
@@ -69,6 +69,8 @@ where
 pub struct DSConfig {
     #[serde(rename = "version")]
     pub version: GameVersion,
+    #[serde(rename = "region")]
+    pub region: Region,
     #[serde(rename = "timer0", deserialize_with = "de_u16_hex_or_dec")]
     pub timer0: u16,
     #[serde(rename = "is_dslite")]
@@ -78,9 +80,10 @@ pub struct DSConfig {
 }
 
 impl DSConfig {
-    pub fn new(version: GameVersion, timer0: u16, is_dslite: bool, mac: u64) -> Self {
+    pub fn new(version: GameVersion, region: Region, timer0: u16, is_dslite: bool, mac: u64) -> Self {
         Self {
             version,
+            region,
             timer0,
             is_dslite,
             mac_address: mac,
@@ -88,7 +91,7 @@ impl DSConfig {
     }
 
     pub fn get_version_config(&self) -> VersionConfig{
-        VersionConfig::from_version(self.version)
+        VersionConfig::from_version(self.version, self.region)
     }
 }
 
@@ -114,8 +117,9 @@ mod tests {
 
     #[test]
     fn test_dsconfig_new_and_fields() {
-        let cfg = DSConfig::new(GameVersion::Black, 0x10FA, true, 0x1234_ABCDu64);
+        let cfg = DSConfig::new(GameVersion::Black, Region::JPN,0x10FA, true, 0x1234_ABCDu64);
         assert_eq!(cfg.version, GameVersion::Black);
+        assert_eq!(cfg.region, Region::JPN);
         assert_eq!(cfg.timer0, 0x10FA);
         assert!(cfg.is_dslite);
         assert_eq!(cfg.mac_address, 0x1234_ABCDu64);
@@ -123,12 +127,21 @@ mod tests {
 
     #[test]
     fn test_serde_roundtrip() {
-        let cfg = DSConfig::new(GameVersion::White2, 0x10FA, false, 0xDEAD_BEEFu64);
+        let cfg = DSConfig::new(GameVersion::White2, Region::JPN, 0x10FA, false, 0xDEAD_BEEFu64);
         let s = serde_json::to_string(&cfg).expect("serialize");
         let de: DSConfig = serde_json::from_str(&s).expect("deserialize");
         assert_eq!(de.mac_address, cfg.mac_address);
         assert_eq!(de.timer0, cfg.timer0);
         assert_eq!(de.is_dslite, cfg.is_dslite);
         assert_eq!(de.version, cfg.version);
+        assert_eq!(de.region, cfg.region);
+    }
+
+    #[test]
+    fn missing_region_defaults_to_jpn() {
+        let j = r#"{ "version": "Black", "timer0": 1, "is_dslite": false, "mac": 1 }"#;
+        let cfg: DSConfig = serde_json::from_str(j).expect("parse default region");
+
+        assert_eq!(cfg.region, Region::JPN);
     }
 }

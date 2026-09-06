@@ -245,6 +245,7 @@ mod tests {
     fn test_black1_pups() {
         let ds_config = DSConfig{
             version : GameVersion::Black,
+            region : rng_core::models::Region::JPN,
             timer0 : 0xc7a,
             is_dslite : false,
             mac_address : 0x9bf6d93ce,
@@ -278,6 +279,7 @@ mod tests {
     fn test_black1_sawk() {
         let ds_config = DSConfig{
             version : GameVersion::Black,
+            region : rng_core::models::Region::JPN,
             timer0 : 0xc7a,
             is_dslite : false,
             mac_address : 0x9bf5aa1fc,
