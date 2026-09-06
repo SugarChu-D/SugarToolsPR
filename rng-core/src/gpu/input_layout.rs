@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn test_gpu_input_iterator_next_batch() {
-        let ds_config = DSConfig::new(GameVersion::White2, 0x10F7, false, 0x0009bf6d93ce);
+        let ds_config = DSConfig::new(GameVersion::White2, crate::models::Region::JPN, 0x10F7, false, 0x0009bf6d93ce);
         let datespec = GameDateSpec {
             year: FieldRange { min: 33, max: 33 },
             month: FieldRange { min: 8, max: 8 },

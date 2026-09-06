@@ -20,12 +20,6 @@ pub enum Region {
     ITA,
 }
 
-impl Default for Region {
-    fn default() -> Self {
-        Self::JPN
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct NazoValues {
     pub nazo1: u32,
@@ -43,11 +37,7 @@ pub struct VersionConfig {
 }
 
 impl VersionConfig {
-    pub fn from_version(version: GameVersion) -> Self {
-        Self::from_version_and_region(version, Region::JPN)
-    }
-
-    pub fn from_version_and_region(version: GameVersion, region: Region) -> Self {
+    pub fn from_version(version: GameVersion, region: Region) -> Self {
         let version_name = version.to_string();
         let region_name = region.to_string();
         let row = include_str!("params/nazo_vcount.csv")
@@ -117,7 +107,7 @@ mod tests {
 
     #[test]
     fn loads_version_config_from_csv() {
-        let config = VersionConfig::from_version_and_region(GameVersion::White2, Region::USA);
+        let config = VersionConfig::from_version(GameVersion::White2, Region::USA);
 
         assert_eq!(config.nazo_values.nazo1, 0x0209AF28);
         assert_eq!(config.nazo_values.nazo2, 0x02039E15);

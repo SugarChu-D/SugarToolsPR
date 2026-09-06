@@ -6,7 +6,7 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
     let mut hasher = Sha1::new();
 
     // ゲームバージョンのnazo値をリトルエンディアンで追加 data[0]-data[4]に対応
-    let version_config = crate::models::VersionConfig::from_version(config.version);
+    let version_config = crate::models::VersionConfig::from_version(config.version, config.region);
     // #[cfg(debug_assertions)]
     // {
     //     println!("nazo1: 0x{:08X}", version_config.nazo_values.nazo1);

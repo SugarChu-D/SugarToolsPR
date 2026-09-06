@@ -554,7 +554,7 @@ mod tests {
             let ctx = GpuContext::new().await;
             let start = std::time::Instant::now();
 
-            let ds_config = DSConfig::new(GameVersion::White2, 0x10F7, false, 0x0009bf6d93ce);
+            let ds_config = DSConfig::new(GameVersion::White2, crate::models::Region::JPN, 0x10F7, false, 0x0009bf6d93ce);
             
             let p = 2u32;
             let iv_min: [u32; 6] = [31u32, 31u32, 31u32, 8, 31u32, 31u32];
@@ -613,7 +613,7 @@ mod tests {
     fn test_sha1_seedhigh_search_smoke() {
         pollster::block_on(async {
             let ctx = GpuContext::new().await;
-            let ds_config = DSConfig::new(GameVersion::White2, 0x10f7, false, 0x0009bf6d93ce);
+            let ds_config = DSConfig::new(GameVersion::White2,crate::models::Region::JPN, 0x10f7, false, 0x0009bf6d93ce);
             let datespec = GameDateSpec {
                 year: FieldRange { min: 0, max:  99 },
                 month: FieldRange { min: 1, max: 12 },
