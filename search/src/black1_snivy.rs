@@ -1,4 +1,12 @@
-use rng_core::{lcg::{Lcg, OffsetType::Bw1Start, nature::Nature}, models::{FieldRange, GameTime, ds_config::DSConfig, game_time_iterator, key_presses::KeyPresses}, mt::mt_0};
+use rng_core::mt::mt_0;
+use rng_core::models::key_presses::KeyPresses;
+use rng_core::models::game_time_iterator;
+use rng_core::models::ds_config::DSConfig;
+use rng_core::models::GameTime;
+use rng_core::models::FieldRange;
+use rng_core::lcg::Lcg;
+use rng_core::lcg::nature::Nature;
+use rng_core::lcg::OffsetType::Bw1Start;
 
 #[derive(Debug, Clone)]
 pub struct SnivySearchResult {
@@ -75,7 +83,8 @@ pub fn search_snivy(
 
 #[cfg(test)]
 mod tests {
-    use rng_core::models::{GameVersion::Black, Region};
+    use rng_core::models::Region;
+    use rng_core::models::GameVersion::Black;
 
 use super::*;
 

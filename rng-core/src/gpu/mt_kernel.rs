@@ -11,7 +11,6 @@ use std::sync::{Mutex, OnceLock};
 
 use crate::gpu::bind_layout::config_output_counter_params_layout;
 use crate::gpu::input_layout::GpuIvConfig;
-use crate::gpu::local_gpu_config::GpuKernelConfig;
 
 const MT_SEEDHIGH_SHADER: &str = concat!(
     include_str!("wgsl/common_types.wgsl"),
@@ -58,15 +57,19 @@ pub async fn run_mt_seedhigh_candidates(
         .buffer;
 
     let layout = config_output_counter_params_layout(&ctx.device);
-    let pipeline = PipelineFactory::new(&ctx.device)
-        .create_compute(&shader, &layout, "main");
+    let pipeline = PipelineFactory::new(&ctx.device).create_compute_with_workgroup_size(
+        &shader,
+        &layout,
+        "main",
+        ctx.workgroup_size,
+    );
 
     let readback = Readback::new(ctx);
 
     let mut results = Vec::new();
     let total_len = (u32::MAX as u64) + 1;
     let mut base: u64 = 0;
-    let wg = GpuKernelConfig::SHA1_MT.workgroup_size as u64;
+    let wg = ctx.workgroup_size as u64;
     let max_groups = ctx
         .device
         .limits()
@@ -111,7 +114,7 @@ pub async fn run_mt_seedhigh_candidates(
                 &pipeline,
                 &bind_group,
                 chunk_len,
-                GpuKernelConfig::SHA1_MT.workgroup_size,
+                ctx.workgroup_size,
             );
         }
         ctx.queue.submit(Some(encoder.finish()));

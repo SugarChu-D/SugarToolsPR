@@ -20,7 +20,9 @@ var<storage, read_write> output_buf: OutputBuffer;
 @group(0) @binding(2)
 var<storage, read> params: DispatchParams;
 
-@compute @workgroup_size(256)
+override WORKGROUP_SIZE: u32 = 256u;
+
+@compute @workgroup_size(WORKGROUP_SIZE)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let global = params.base_index + u64(gid.x);
     if (global >= params.total_len) {

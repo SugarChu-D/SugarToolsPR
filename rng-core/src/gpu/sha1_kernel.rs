@@ -9,7 +9,6 @@ use wgpu::util::DeviceExt;
 use crate::gpu::bind_layout::{input_output_layout, input_output_counter_params_layout, input_list_output_counter_params_layout};
 use crate::gpu::input_layout::{GpuInput, GpuIvConfig, GPUInputIterator};
 use crate::gpu::staging_layout::GpuCandidate;
-use crate::gpu::local_gpu_config::GpuKernelConfig;
 use crate::models::game_date_iterator::GameDateSpec;
 use crate::models::{DSConfig, KeyPresses};
 use crate::gpu::mt_kernel;
@@ -105,8 +104,12 @@ pub async fn run_sha1(
         .buffer;
 
     let layout = input_output_layout(&ctx.device);
-    let pipeline = PipelineFactory::new(&ctx.device)
-        .create_compute(&shader, &layout, "main");
+    let pipeline = PipelineFactory::new(&ctx.device).create_compute_with_workgroup_size(
+        &shader,
+        &layout,
+        "main",
+        ctx.workgroup_size,
+    );
 
     let readback = Readback::new(ctx);
     let limits = ctx.device.limits();
@@ -156,7 +159,7 @@ pub async fn run_sha1(
                 &pipeline,
                 &bind_group,
                 chunk_len as u32,
-                GpuKernelConfig::SHA1_MT.workgroup_size,
+                ctx.workgroup_size,
             );
         }
         ctx.queue.submit(Some(encoder.finish()));
@@ -227,14 +230,18 @@ pub async fn run_sha1_mt(
         .buffer;
 
     let layout = input_output_counter_params_layout(&ctx.device);
-    let pipeline = PipelineFactory::new(&ctx.device)
-        .create_compute(&shader, &layout, "main");
+    let pipeline = PipelineFactory::new(&ctx.device).create_compute_with_workgroup_size(
+        &shader,
+        &layout,
+        "main",
+        ctx.workgroup_size,
+    );
 
     let readback = Readback::new(ctx);
 
     let mut results = Vec::new();
     let mut base: u64 = 0;
-    let wg = GpuKernelConfig::SHA1_MT.workgroup_size as u64;
+    let wg = ctx.workgroup_size as u64;
     let max_groups = ctx
         .device
         .limits()
@@ -284,7 +291,7 @@ pub async fn run_sha1_mt(
                 &pipeline,
                 &bind_group,
                 chunk_len,
-                GpuKernelConfig::SHA1_MT.workgroup_size,
+                ctx.workgroup_size,
             );
         }
         ctx.queue.submit(Some(encoder.finish()));
@@ -389,8 +396,12 @@ pub async fn run_sha1_seedhigh_filter(
         .buffer;
 
     let layout = input_list_output_counter_params_layout(&ctx.device);
-    let pipeline = PipelineFactory::new(&ctx.device)
-        .create_compute(&shader, &layout, "main");
+    let pipeline = PipelineFactory::new(&ctx.device).create_compute_with_workgroup_size(
+        &shader,
+        &layout,
+        "main",
+        ctx.workgroup_size,
+    );
 
     let readback = Readback::new(ctx);
 
@@ -419,7 +430,7 @@ pub async fn run_sha1_seedhigh_filter(
         .build(&ctx.device, Some("rng_core_sha1_seedhigh_bind_group"));
 
     let mut base: u64 = 0;
-    let wg = GpuKernelConfig::SHA1_MT.workgroup_size as u64;
+    let wg = ctx.workgroup_size as u64;
     let max_groups = ctx
         .device
         .limits()
@@ -450,7 +461,7 @@ pub async fn run_sha1_seedhigh_filter(
                 &pipeline,
                 &bind_group,
                 chunk_len,
-                GpuKernelConfig::SHA1_MT.workgroup_size,
+                ctx.workgroup_size,
             );
         }
         ctx.queue.submit(Some(encoder.finish()));

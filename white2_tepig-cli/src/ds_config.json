@@ -1,4 +1,5 @@
 {
+    "workgroup_size": 256,
     "ds_configs": {
         "profile1": {
             "version": "White2",
