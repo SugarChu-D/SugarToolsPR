@@ -1,4 +1,4 @@
-workgroup_size = 64
+workgroup_size = 32
 
 [ds_configs.profile1]
 version = "White2"
