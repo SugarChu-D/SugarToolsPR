@@ -11,7 +11,7 @@ use search::white2_whack_a_mole::{drilbur_search, DrilburSearchResult};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-struct DsConfigFile {
+struct Config {
     ds_configs: HashMap<String, DSConfig>,
     #[serde(default)]
     workgroup_size: Option<u32>,
@@ -19,7 +19,7 @@ struct DsConfigFile {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let default_config = default_config_path();
-    let config_path = prompt_path("ds_config.toml path", &default_config)?;
+    let config_path = prompt_path("config.toml path", &default_config)?;
     let (ds_config, workgroup_size_opt) = load_single_profile(&config_path)?;
 
     if ds_config.version != GameVersion::White2 {
@@ -45,9 +45,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn load_config_file(path: &PathBuf) -> Result<DsConfigFile, Box<dyn Error>> {
+fn load_config_file(path: &PathBuf) -> Result<Config, Box<dyn Error>> {
     let text = fs::read_to_string(path)?;
-    let file: DsConfigFile = toml::from_str(&text)?;
+    let file: Config = toml::from_str(&text)?;
     Ok(file)
 }
 
@@ -57,7 +57,7 @@ fn load_single_profile(path: &PathBuf) -> Result<(DSConfig, Option<u32>), Box<dy
     let mut iter = file.ds_configs.iter();
     let (name, cfg) = iter
         .next()
-        .ok_or("no profiles found in ds_config.toml")?;
+        .ok_or("no profiles found in config.toml")?;
     if iter.next().is_some() {
         eprintln!("warning: multiple profiles found; using '{}'", name);
     }
@@ -87,9 +87,9 @@ fn default_config_path() -> PathBuf {
     match std::env::current_exe() {
         Ok(exe) => exe
             .parent()
-            .map(|dir| dir.join("ds_config.toml"))
-            .unwrap_or_else(|| PathBuf::from("ds_config.toml")),
-        Err(_) => PathBuf::from("ds_config.toml"),
+            .map(|dir| dir.join("config.toml"))
+            .unwrap_or_else(|| PathBuf::from("config.toml")),
+        Err(_) => PathBuf::from("config.toml"),
     }
 }
 
