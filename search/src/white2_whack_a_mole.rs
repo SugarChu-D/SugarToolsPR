@@ -48,7 +48,7 @@ pub async fn drilbur_search(ds_config: rng_core::models::DSConfig) -> Vec<Drilbu
         ds_config,
         [0, 23],
         [0, 59],
-        [5, 7],
+        [5, 6],
         2,
         iv_min,
         iv_max,
@@ -131,7 +131,7 @@ async fn collect_gpu_results(
         let cloud_advances =
             find_cloud_exists_advances(
                 seed0,
-                26,
+                24,
                 40,
                 OffsetType::BW2Continue,
             );
