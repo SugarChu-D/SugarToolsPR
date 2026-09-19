@@ -8,6 +8,7 @@ use rng_core::models::game_date::GameDate;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::key_presses::KeyPresses;
 use rng_core::result_base::ResultBase;
+use rng_core::gpu::workgroup_size::WorkgroupSize;
 
 const TARGET_DATES: [(u8, u8); 6] = [
     (4, 29),
@@ -35,8 +36,9 @@ pub struct PupSearchResult {
 
 const BATCH_DATES: usize = 256;
 
-pub async fn pup_search(ds_config: DSConfig, wild_max_advances: u32) -> Vec<PupSearchResult> {
-    let ctx = GpuContext::new().await;
+pub async fn pup_search(ds_config: DSConfig, wild_max_advances: u32, workgroup_size: WorkgroupSize) -> Vec<PupSearchResult> {
+    let batch_size = BATCH_DATES;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
 
@@ -53,11 +55,11 @@ pub async fn pup_search(ds_config: DSConfig, wild_max_advances: u32) -> Vec<PupS
         iv_max,
     );
     
-    let mut dates = Vec::with_capacity(BATCH_DATES);
+    let mut dates = Vec::with_capacity(batch_size);
     for &(month, day) in &TARGET_DATES {
         for year in 0..=99u8 {
             dates.push(GameDate { year, month, day });
-            if dates.len() >= BATCH_DATES {
+            if dates.len() >= batch_size {
                 collect_gpu_results(
                     &ctx,
                     ds_config,
@@ -68,6 +70,7 @@ pub async fn pup_search(ds_config: DSConfig, wild_max_advances: u32) -> Vec<PupS
                     &mut results,
                     &mut seen_seed0,
                     &is_target_pup,
+                    batch_size,
                 )
                 .await;
                 dates.clear();
@@ -85,6 +88,7 @@ pub async fn pup_search(ds_config: DSConfig, wild_max_advances: u32) -> Vec<PupS
             &mut results,
             &mut seen_seed0,
             &is_target_pup,
+            batch_size,
         )
         .await;
     }
@@ -92,8 +96,9 @@ pub async fn pup_search(ds_config: DSConfig, wild_max_advances: u32) -> Vec<PupS
     results
 }
 
-pub async fn sawk_search(ds_config: DSConfig, wild_min_advances: u32, wild_max_advances: u32, iv_step: u32 ) -> Vec<PupSearchResult> {
-    let ctx = GpuContext::new().await;
+pub async fn sawk_search(ds_config: DSConfig, wild_min_advances: u32, wild_max_advances: u32, iv_step: u32, workgroup_size: WorkgroupSize) -> Vec<PupSearchResult> {
+    let batch_size = BATCH_DATES;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
 
@@ -110,7 +115,7 @@ pub async fn sawk_search(ds_config: DSConfig, wild_min_advances: u32, wild_max_a
         iv_max,
     );
 
-    let mut dates = Vec::with_capacity(BATCH_DATES);
+    let mut dates = Vec::with_capacity(batch_size);
 
     for temp_month in 1..=3 {
         let month = temp_month * 4;
@@ -121,7 +126,7 @@ pub async fn sawk_search(ds_config: DSConfig, wild_min_advances: u32, wild_max_a
             if is_not_hail_date {
                 for year in 0..=99u8 {
                     dates.push(GameDate { year, month, day });
-                    if dates.len() >= BATCH_DATES {
+                    if dates.len() >= batch_size {
                         collect_gpu_results(
                             &ctx,
                             ds_config,
@@ -132,6 +137,7 @@ pub async fn sawk_search(ds_config: DSConfig, wild_min_advances: u32, wild_max_a
                             &mut results,
                             &mut seen_seed0,
                             &is_target_sawk,
+                            batch_size,
                         )
                         .await;
                         dates.clear();
@@ -151,6 +157,7 @@ pub async fn sawk_search(ds_config: DSConfig, wild_min_advances: u32, wild_max_a
             &mut results,
             &mut seen_seed0,
             &is_target_sawk,
+            batch_size,
         )
         .await;
     }
@@ -168,13 +175,14 @@ async fn collect_gpu_results(
     results: &mut Vec<PupSearchResult>,
     seen_seed0: &mut HashSet<u64>,
     is_target: &dyn Fn(&WildPoke) -> bool,
+    batch_size: usize,
 ) {
     let base_results = match run_result_base_seedhigh_by_dates(
         ctx,
         ds_config,
         params,
         dates,
-        BATCH_DATES,
+        batch_size,
     )
     .await
     {
@@ -251,7 +259,7 @@ mod tests {
             mac_address : 0x9bf6d93ce,
         };
         let start = Instant::now();
-        let results = pollster::block_on(async { pup_search(ds_config, 70).await });
+        let results = pollster::block_on(async { pup_search(ds_config, 70, WorkgroupSize::W256).await });
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);
@@ -285,7 +293,7 @@ mod tests {
             mac_address : 0x9bf5aa1fc,
         };
         let start = Instant::now();
-        let results = pollster::block_on(async { sawk_search(ds_config,30, 100, 0).await });
+        let results = pollster::block_on(async { sawk_search(ds_config,30, 100, 0, WorkgroupSize::W256).await });
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);

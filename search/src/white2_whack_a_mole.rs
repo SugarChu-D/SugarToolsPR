@@ -1,6 +1,13 @@
 
 use infra::gpu::context::GpuContext;
-use rng_core::{gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates}, lcg::{OffsetType, cloud_impl::{find_cloud_exists_advances, find_cloud_poke_advances}, nature::Nature}, models::KeyPresses, result_base::ResultBase};
+use rng_core::result_base::ResultBase;
+use rng_core::models::KeyPresses;
+use rng_core::lcg::nature::Nature;
+use rng_core::lcg::cloud_impl::find_cloud_poke_advances;
+use rng_core::lcg::cloud_impl::find_cloud_exists_advances;
+use rng_core::lcg::OffsetType;
+use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
+use rng_core::gpu::workgroup_size::WorkgroupSize;
 
 static GOOD_DATES: &[&[u32]] =&[
     &[], // 0月 存在しないため空白
@@ -36,8 +43,10 @@ pub struct DrilburSearchResult {
 
 const BATCH_DATES: usize = 256;
 
-pub async fn drilbur_search(ds_config: rng_core::models::DSConfig) -> Vec<DrilburSearchResult> {
-    let ctx = GpuContext::new().await;
+pub async fn drilbur_search(ds_config: rng_core::models::DSConfig, workgroup_size: WorkgroupSize )
+    -> Vec<DrilburSearchResult> {
+    let batch_size = BATCH_DATES;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
     let mut seen_seed0: std::collections::HashSet<u64> = std::collections::HashSet::new();
 
@@ -54,7 +63,7 @@ pub async fn drilbur_search(ds_config: rng_core::models::DSConfig) -> Vec<Drilbu
         iv_max,
     );
     
-    let mut dates = Vec::with_capacity(BATCH_DATES);
+    let mut dates = Vec::with_capacity(batch_size);
     for year in 0..=99u8 {
         for month in 1..=12u8 {
             if month % 4 == 2 {
@@ -62,7 +71,7 @@ pub async fn drilbur_search(ds_config: rng_core::models::DSConfig) -> Vec<Drilbu
             }
             for day in GOOD_DATES[month as usize] {
                 dates.push(rng_core::models::game_date::GameDate { year, month, day: *day as u8 });
-                if dates.len() >= BATCH_DATES {
+                if dates.len() >= batch_size {
                     collect_gpu_results(
                         &ctx,
                         ds_config,
@@ -70,6 +79,7 @@ pub async fn drilbur_search(ds_config: rng_core::models::DSConfig) -> Vec<Drilbu
                         &dates,
                         &mut results,
                         &mut seen_seed0,
+                        batch_size,
                     ).await;
                     dates.clear();
                 }
@@ -85,6 +95,7 @@ pub async fn drilbur_search(ds_config: rng_core::models::DSConfig) -> Vec<Drilbu
             &dates,
             &mut results,
             &mut seen_seed0,
+            batch_size,
         ).await;
     }
 
@@ -98,13 +109,14 @@ async fn collect_gpu_results(
     dates: &[rng_core::models::game_date::GameDate],
     results: &mut Vec<DrilburSearchResult>,
     seen_seed0: &mut std::collections::HashSet<u64>,
+    batch_size: usize,
 ) {
     let base_results = match run_result_base_seedhigh_by_dates(
         ctx,
         ds_config,
         params,
         dates,
-        BATCH_DATES
+        batch_size
     )
     .await
     {
@@ -182,7 +194,7 @@ fn is_target_drilbur(poke: &rng_core::lcg::wild_poke::WildPoke) -> bool {
 #[cfg(test)]
 mod tests {
     use std::time::Instant;
-    use rng_core::models::{DSConfig, GameVersion};
+    use rng_core::{gpu::workgroup_size::WorkgroupSize::W256, models::{DSConfig, GameVersion}};
 
 use super::*;
 
@@ -198,7 +210,7 @@ use super::*;
 
         let start = Instant::now();
         let results = pollster::block_on(async {
-            drilbur_search(ds_config).await
+            drilbur_search(ds_config, W256).await
         });
         let elapsed = start.elapsed();
         println!("Elapsed: {:?}", elapsed);

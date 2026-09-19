@@ -64,7 +64,9 @@ fn list_contains(list_len: u32, value: u32) -> bool {
     return false;
 }
 
-@compute @workgroup_size(256)
+override WORKGROUP_SIZE: u32 = 256u;
+
+@compute @workgroup_size(WORKGROUP_SIZE)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let global = params.base_index + u64(gid.x);
     if (global >= params.total_len) {

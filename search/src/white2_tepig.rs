@@ -4,7 +4,8 @@ use std::thread;
 
 use infra::gpu::context::GpuContext;
 use rayon::prelude::*;
-use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates_multi_iv};
+use rng_core::gpu::helpers::run_result_base_seedhigh_by_dates_multi_iv;
+use rng_core::gpu::helpers::GpuInputParams;
 use rng_core::gpu::input_layout::GpuIvConfig;
 use rng_core::lcg::{Lcg, OffsetType};
 use rng_core::lcg::grotto::Grottos;
@@ -12,6 +13,7 @@ use rng_core::lcg::nature::Nature as Nature;
 use rng_core::lcg::wild_poke::WildPoke;
 use rng_core::models::DSConfig as DSConfig;
 use rng_core::models::game_date::{GameDate, build_date_except_summer};
+use rng_core::gpu::workgroup_size::WorkgroupSize;
 
 #[derive(Debug,Clone)]
 pub struct TepigSearchResult {
@@ -86,13 +88,13 @@ fn tepig_iv_check(ivs: [u8; 6], nat: &Nature) -> bool {
 
 const BATCH_DATES: usize = 256;
 
-pub async fn white2_tepig_dragonite_search(config: DSConfig, nat: Nature, mode: BW2Mode)
+pub async fn white2_tepig_dragonite_search(config: DSConfig, nat: Nature, mode: BW2Mode, workgroup_size: WorkgroupSize)
     -> Vec<TepigSearchResult> {
     let dates = build_date_except_summer();
-    tepig_search_by_dates(config, nat, &dates, mode, find_grotto_advances_candy_dragonite).await
+    tepig_search_by_dates(config, nat, &dates, mode, workgroup_size, find_grotto_advances_candy_dragonite).await
 }
 
-pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8, nat: Nature, mode: BW2Mode)
+pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8, nat: Nature, mode: BW2Mode, workgroup_size: WorkgroupSize)
     -> Vec<TepigSearchResult> {
     if year >= 100 || month > 12 || day > 31 {
         panic!("Invalid Date!")
@@ -103,7 +105,7 @@ pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8,
     };
 
     let dates = [GameDate{ year, month, day }];
-    tepig_search_by_dates(config, nat, &dates, mode, find_grotto_advances_candy).await
+    tepig_search_by_dates(config, nat, &dates, mode, workgroup_size, find_grotto_advances_candy).await
 }
 
 async fn tepig_search_by_dates(
@@ -111,10 +113,12 @@ async fn tepig_search_by_dates(
     nat: Nature,
     dates: &[GameDate],
     mode: BW2Mode,
+    workgroup_size: WorkgroupSize,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
 )
     -> Vec<TepigSearchResult> {
-    let ctx = GpuContext::new().await;
+    let batch_size = BATCH_DATES;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
     let mut pending_cpu: Option<thread::JoinHandle<Vec<TepigSearchResult>>> = None;
@@ -149,10 +153,10 @@ async fn tepig_search_by_dates(
         },
     ];
 
-    let mut date_batch = Vec::with_capacity(BATCH_DATES);
+    let mut date_batch = Vec::with_capacity(batch_size);
     for &date in dates {
         date_batch.push(date);
-        if date_batch.len() < BATCH_DATES {
+        if date_batch.len() < batch_size {
             continue;
         }
         let base_results = match run_result_base_seedhigh_by_dates_multi_iv(
@@ -160,7 +164,7 @@ async fn tepig_search_by_dates(
             config,
             &params,
             &date_batch,
-            BATCH_DATES,
+            batch_size,
             &iv_cfgs,
         ).await {
             Ok(v) => v,
@@ -185,7 +189,7 @@ async fn tepig_search_by_dates(
             config,
             &params,
             &date_batch,
-            BATCH_DATES,
+            batch_size,
             &iv_cfgs,
         ).await {
             Ok(v) => v,
@@ -462,7 +466,9 @@ impl TepigSearchResult {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use rng_core::gpu::workgroup_size::WorkgroupSize::W256;
+
+use super::*;
     use std::time::Instant;
 
     #[test]
@@ -484,7 +490,8 @@ mod tests {
                 8,
                 27,
                 Nature::new(4),
-                BW2Mode::Normal
+                BW2Mode::Normal,
+                W256,
             ).await // 例: Rash
         });
         let elapsed = start.elapsed();
@@ -510,7 +517,8 @@ mod tests {
             white2_tepig_dragonite_search(
                 ds_config,
                 Nature::new(4),
-                BW2Mode::Normal
+                BW2Mode::Normal,
+                W256,
             ).await // 例: Naughty
         });
         let elapsed = start.elapsed();
