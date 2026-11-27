@@ -12,7 +12,7 @@ jobs:
   quality:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
       - run: cargo +stable fmt --all -- --check
       - run: cargo +stable clippy --workspace --all-targets -- -D warnings
