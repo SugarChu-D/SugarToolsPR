@@ -460,9 +460,9 @@ impl TepigSearchResult {
         print!("candy:");
         for candy in &self.candy_frames {
             println!("{}: ", candy.0);
-            for i in 0..candy.1.grottos.len() {
-                if candy.1.grottos[i].slot().is_some() {
-                    println!("#{}: {:?}", i, candy.1.grottos[i]);
+            for (i, grotto) in candy.1.grottos.iter().enumerate() {
+                if grotto.slot().is_some() {
+                    println!("#{}: {:?}", i, grotto);
                 }
             }
         }

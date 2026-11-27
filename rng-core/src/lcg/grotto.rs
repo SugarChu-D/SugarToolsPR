@@ -37,9 +37,9 @@ impl Grottos {
 
     pub fn fill_grottos(&mut self, lcg: &Lcg) {
         let mut lcg_local = *lcg;
-        for i in 0..20 {
+        for grotto in &mut self.grottos {
             // もし埋まっているならスキップ
-            if self.grottos[i].sub_slot.is_some() {
+            if grotto.sub_slot.is_some() {
                 continue;
             }
             // lcgが5以上なら埋めないでスキップ
@@ -47,9 +47,9 @@ impl Grottos {
                 continue;
             }
 
-            self.grottos[i].sub_slot = Some(lcg_local.rand(4));
-            self.grottos[i].slot = Some(lcg_local.rand(100));
-            self.grottos[i].gender = Some(lcg_local.rand(100));
+            grotto.sub_slot = Some(lcg_local.rand(4));
+            grotto.slot = Some(lcg_local.rand(100));
+            grotto.gender = Some(lcg_local.rand(100));
         }
     }
 
@@ -114,10 +114,10 @@ mod tests {
         let mut grottos = Grottos::new_game();
         grottos.fill_grottos(&seed);
 
-        for i in 0..20 {
+        for (i, grotto) in grottos.grottos.iter().enumerate() {
             println!(
                 "{}: sub_slot={:?}, slot={:?}",
-                i, grottos.grottos[i].sub_slot, grottos.grottos[i].slot
+                i, grotto.sub_slot, grotto.slot
             );
         }
     }
@@ -129,10 +129,10 @@ mod tests {
         let mut grottos = Grottos::new();
         grottos.fill_grottos(&seed);
 
-        for i in 0..20 {
+        for (i, grotto) in grottos.grottos.iter().enumerate() {
             println!(
                 "{}: sub_slot={:?}, slot={:?}, gender={:?}",
-                i, grottos.grottos[i].sub_slot, grottos.grottos[i].slot, grottos.grottos[i].gender
+                i, grotto.sub_slot, grotto.slot, grotto.gender
             );
         }
     }
