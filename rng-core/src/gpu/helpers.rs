@@ -7,6 +7,7 @@ use crate::models::game_date::GameDate;
 use crate::models::{DSConfig, KeyPresses};
 use crate::mt;
 use crate::result_base::ResultBase;
+use infra::gpu::readback::ReadbackError;
 
 #[derive(Clone, Copy)]
 pub struct GpuInputParams {
@@ -84,7 +85,7 @@ pub async fn run_sha1_mt_by_dates(
     params: &GpuInputParams,
     dates: &[GameDate],
     batch_size: usize,
-) -> Result<Vec<crate::gpu::staging_layout::GpuCandidate>, wgpu::BufferAsyncError> {
+) -> Result<Vec<crate::gpu::staging_layout::GpuCandidate>, ReadbackError> {
     if dates.is_empty() {
         return Ok(Vec::new());
     }
@@ -114,7 +115,7 @@ pub async fn run_result_base_by_dates(
     params: &GpuInputParams,
     dates: &[GameDate],
     batch_size: usize,
-) -> Result<Vec<ResultBase>, wgpu::BufferAsyncError> {
+) -> Result<Vec<ResultBase>, ReadbackError> {
     let candidates = run_sha1_mt_by_dates(ctx, params, dates, batch_size).await?;
     Ok(build_result_base_from_candidates(
         ds_config,
@@ -129,7 +130,7 @@ pub async fn run_result_base_seedhigh_by_dates(
     params: &GpuInputParams,
     dates: &[GameDate],
     batch_size: usize,
-) -> Result<Vec<ResultBase>, wgpu::BufferAsyncError> {
+) -> Result<Vec<ResultBase>, ReadbackError> {
     if dates.is_empty() {
         return Ok(Vec::new());
     }
@@ -179,7 +180,7 @@ pub async fn run_result_base_seedhigh_by_dates_multi_iv(
     dates: &[GameDate],
     batch_size: usize,
     iv_cfgs: &[GpuIvConfig],
-) -> Result<Vec<ResultBase>, wgpu::BufferAsyncError> {
+) -> Result<Vec<ResultBase>, ReadbackError> {
     if dates.is_empty() {
         return Ok(Vec::new());
     }

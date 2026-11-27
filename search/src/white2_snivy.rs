@@ -1,3 +1,4 @@
+use crate::SearchError;
 use std::collections::HashSet;
 use std::thread;
 
@@ -71,7 +72,7 @@ pub async fn white2_snivy_search(
     config: DSConfig,
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
-) -> Vec<W2SnivySearchResult> {
+) -> Result<Vec<W2SnivySearchResult>, SearchError> {
     let dates = build_autumn_and_winter();
     snivy_search_by_dates(
         config,
@@ -89,9 +90,9 @@ async fn snivy_search_by_dates(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
-) -> Vec<W2SnivySearchResult> {
+) -> Result<Vec<W2SnivySearchResult>, SearchError> {
     let batch_size = BATCH_DATES;
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
     let mut pending_cpu: Option<thread::JoinHandle<Vec<W2SnivySearchResult>>> = None;
@@ -116,64 +117,29 @@ async fn snivy_search_by_dates(
         },
     ];
 
-    let mut date_batch = Vec::with_capacity(batch_size);
-    for &date in dates {
-        date_batch.push(date);
-        if date_batch.len() < batch_size {
-            continue;
-        }
-        let base_results = match run_result_base_seedhigh_by_dates_multi_iv(
-            &ctx,
-            config,
-            &params,
-            &date_batch,
-            batch_size,
-            &iv_cfgs,
-        )
-        .await
-        {
-            Ok(v) => v,
-            Err(_) => {
-                date_batch.clear();
-                continue;
-            }
-        };
-        if let Some(handle) = pending_cpu.take() {
-            let batch_results = handle.join().expect("CPU worker thread panicked");
-            merge_results(batch_results, &mut results, &mut seen_seed0);
-        }
-        let nat_clone = nat.clone();
-        pending_cpu = Some(thread::spawn(move || {
-            process_base_results(base_results, mode, nat_clone, find_grotto)
-        }));
-        date_batch.clear();
-    }
-    if !date_batch.is_empty() {
+    for date_batch in dates.chunks(batch_size) {
         let base_results = run_result_base_seedhigh_by_dates_multi_iv(
-            &ctx,
-            config,
-            &params,
-            &date_batch,
-            batch_size,
-            &iv_cfgs,
+            &ctx, config, &params, date_batch, batch_size, &iv_cfgs,
         )
-        .await
-        .unwrap_or_default();
+        .await;
         if let Some(handle) = pending_cpu.take() {
-            let batch_results = handle.join().expect("CPU worker thread panicked");
+            let batch_results = handle.join().map_err(|_| SearchError::WorkerPanicked)?;
             merge_results(batch_results, &mut results, &mut seen_seed0);
         }
+        let base_results = base_results?;
         let nat_clone = nat.clone();
-        pending_cpu = Some(thread::spawn(move || {
-            process_base_results(base_results, mode, nat_clone, find_grotto)
-        }));
+        pending_cpu = Some(
+            thread::Builder::new()
+                .spawn(move || process_base_results(base_results, mode, nat_clone, find_grotto))
+                .map_err(SearchError::WorkerStart)?,
+        );
     }
     if let Some(handle) = pending_cpu.take() {
-        let batch_results = handle.join().expect("CPU worker thread panicked");
+        let batch_results = handle.join().map_err(|_| SearchError::WorkerPanicked)?;
         merge_results(batch_results, &mut results, &mut seen_seed0);
     }
 
-    results
+    Ok(results)
 }
 
 fn merge_results(
@@ -427,7 +393,8 @@ mod tests {
         let start = Instant::now();
         let results = pollster::block_on(async {
             white2_snivy_search(ds_config, BW2Mode::Normal, W256).await
-        });
+        })
+        .expect("search failed");
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);

@@ -2,6 +2,16 @@ use bytemuck::Pod;
 
 use super::context::GpuContext;
 
+#[derive(Debug, thiserror::Error)]
+pub enum ReadbackError {
+    #[error("GPU polling failed: {0}")]
+    Poll(#[from] wgpu::PollError),
+    #[error("GPU buffer mapping failed: {0}")]
+    Map(#[from] wgpu::BufferAsyncError),
+    #[error("GPU buffer mapping callback was dropped")]
+    CallbackDropped,
+}
+
 pub struct Readback<'a> {
     device: &'a wgpu::Device,
     queue: &'a wgpu::Queue,
@@ -25,7 +35,7 @@ impl<'a> Readback<'a> {
         buffer: &wgpu::Buffer,
         len: usize,
         label: Option<&str>,
-    ) -> Result<Vec<T>, wgpu::BufferAsyncError> {
+    ) -> Result<Vec<T>, ReadbackError> {
         let byte_len = (len * std::mem::size_of::<T>()) as u64;
 
         let staging_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -46,7 +56,7 @@ impl<'a> Readback<'a> {
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).ok();
         });
-        let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
+        self.device.poll(wgpu::PollType::wait_indefinitely())?;
 
         match rx.receive().await {
             Some(Ok(())) => {
@@ -56,8 +66,8 @@ impl<'a> Readback<'a> {
                 staging_buffer.unmap();
                 Ok(result)
             }
-            Some(Err(err)) => Err(err),
-            None => Err(wgpu::BufferAsyncError),
+            Some(Err(err)) => Err(err.into()),
+            None => Err(ReadbackError::CallbackDropped),
         }
     }
 
@@ -67,7 +77,7 @@ impl<'a> Readback<'a> {
         buffer: &wgpu::Buffer,
         len: usize,
         label: Option<&str>,
-    ) -> Result<Vec<T>, wgpu::BufferAsyncError> {
+    ) -> Result<Vec<T>, ReadbackError> {
         let byte_len = (len * std::mem::size_of::<T>()) as u64;
 
         let staging_label = label.unwrap_or("staging");
@@ -84,7 +94,7 @@ impl<'a> Readback<'a> {
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).ok();
         });
-        let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
+        self.device.poll(wgpu::PollType::wait_indefinitely())?;
 
         match rx.receive().await {
             Some(Ok(())) => {
@@ -97,11 +107,11 @@ impl<'a> Readback<'a> {
             }
             Some(Err(err)) => {
                 pool.put_staging(byte_len as usize, staging_buffer);
-                Err(err)
+                Err(err.into())
             }
             None => {
                 pool.put_staging(byte_len as usize, staging_buffer);
-                Err(wgpu::BufferAsyncError)
+                Err(ReadbackError::CallbackDropped)
             }
         }
     }

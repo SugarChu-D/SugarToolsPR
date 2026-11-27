@@ -76,7 +76,9 @@ mod tests {
     #[ignore = "requires a GPU adapter"]
     fn workgroup_size_override_creates_a_pipeline() {
         pollster::block_on(async {
-            let ctx = GpuContext::new_with_workgroup_size(64).await;
+            let ctx = GpuContext::new_with_workgroup_size(64)
+                .await
+                .expect("GPU setup failed");
             let shader = ctx.device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("workgroup_size_override_test"),
                 source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(

@@ -3,6 +3,7 @@ use infra::gpu::buffer_pool::{BufferKind, BufferPool};
 use infra::gpu::encoder_utils::EncoderUtils;
 use infra::gpu::pipeline_factory::PipelineFactory;
 use infra::gpu::readback::Readback;
+use infra::gpu::readback::ReadbackError;
 use infra::gpu::shader_loader::ShaderLoader;
 use wgpu::util::DeviceExt;
 
@@ -57,7 +58,7 @@ struct ListDispatchParams {
 pub async fn run_sha1(
     ctx: &infra::gpu::context::GpuContext,
     input: &[GpuInput],
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
+) -> Result<Vec<GpuCandidate>, ReadbackError> {
     if input.is_empty() {
         return Ok(Vec::new());
     }
@@ -202,7 +203,7 @@ pub async fn run_sha1(
 pub async fn run_sha1_mt(
     ctx: &infra::gpu::context::GpuContext,
     input: &[GpuInput],
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
+) -> Result<Vec<GpuCandidate>, ReadbackError> {
     if input.is_empty() {
         return Ok(Vec::new());
     }
@@ -374,7 +375,7 @@ pub async fn run_sha1_seedhigh_filter(
     ctx: &infra::gpu::context::GpuContext,
     input: &[GpuInput],
     seed_high_list: &[u32],
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
+) -> Result<Vec<GpuCandidate>, ReadbackError> {
     let keypress_list: Vec<u32> = KeyPresses::iter_valid().map(|k| k.raw() as u32).collect();
     let keypress_count = keypress_list.len() as u32;
     if keypress_count == 0 {
@@ -585,7 +586,7 @@ pub async fn run_sha1_seedhigh_search(
     iv_min: [u32; 6],
     iv_max: [u32; 6],
     batch_days: usize,
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
+) -> Result<Vec<GpuCandidate>, ReadbackError> {
     let cfg = GpuIvConfig {
         iv_step,
         _pad0: 0,
@@ -684,7 +685,7 @@ mod tests {
         );
         let date = GameDate::new(time.year, time.month, time.day);
         let candidates = pollster::block_on(async {
-            let ctx = GpuContext::new().await;
+            let ctx = GpuContext::new().await.expect("GPU setup failed");
             run_result_base_seedhigh_by_dates(&ctx, config, &params, &[date], 1).await
         })
         .expect("GPU candidate search failed");
@@ -702,7 +703,7 @@ mod tests {
     #[ignore]
     fn test_sha1_mt_matches_cpu_single_case() {
         pollster::block_on(async {
-            let ctx = GpuContext::new().await;
+            let ctx = GpuContext::new().await.expect("GPU setup failed");
             let start = std::time::Instant::now();
 
             let ds_config = DSConfig::new(
@@ -770,7 +771,7 @@ mod tests {
     #[ignore]
     fn test_sha1_seedhigh_search_smoke() {
         pollster::block_on(async {
-            let ctx = GpuContext::new().await;
+            let ctx = GpuContext::new().await.expect("GPU setup failed");
             let ds_config = DSConfig::new(
                 GameVersion::White2,
                 crate::models::Region::JPN,

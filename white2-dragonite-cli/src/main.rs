@@ -20,7 +20,17 @@ struct DsConfigFile {
     workgroup_size: Option<u32>,
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> std::process::ExitCode {
+    match run() {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("Error: {error}");
+            std::process::ExitCode::FAILURE
+        }
+    }
+}
+
+fn run() -> Result<(), Box<dyn Error>> {
     let default_config = default_config_path();
     let config_path = prompt_path("config.toml path", &default_config)?;
     let (ds_config, workgroup_size_opt) = load_single_profile(&config_path)?;
@@ -37,7 +47,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let results = pollster::block_on(async {
         white2_tepig_dragonite_search(ds_config, Nature::new(4), BW2Mode::Normal, workgroup_size)
             .await
-    });
+    })?;
 
     let output_path = default_output_path();
     let text = build_text(&results);

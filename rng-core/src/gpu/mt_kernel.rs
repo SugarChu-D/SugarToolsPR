@@ -4,6 +4,7 @@ use infra::gpu::buffer_pool::{BufferKind, BufferPool};
 use infra::gpu::encoder_utils::EncoderUtils;
 use infra::gpu::pipeline_factory::PipelineFactory;
 use infra::gpu::readback::Readback;
+use infra::gpu::readback::ReadbackError;
 use infra::gpu::shader_loader::ShaderLoader;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
@@ -39,7 +40,7 @@ static SEED_HIGH_CACHE: OnceLock<Mutex<HashMap<IvKey, Vec<u32>>>> = OnceLock::ne
 pub async fn run_mt_seedhigh_candidates(
     ctx: &infra::gpu::context::GpuContext,
     config: &GpuIvConfig,
-) -> Result<Vec<u32>, wgpu::BufferAsyncError> {
+) -> Result<Vec<u32>, ReadbackError> {
     let shader = ShaderLoader::from_wgsl(
         &ctx.device,
         Some("rng_core_mt_seedhigh_compact"),
@@ -167,7 +168,7 @@ pub async fn run_mt_seedhigh_candidates(
 pub async fn run_mt_seedhigh_candidates_cached(
     ctx: &infra::gpu::context::GpuContext,
     config: &GpuIvConfig,
-) -> Result<Vec<u32>, wgpu::BufferAsyncError> {
+) -> Result<Vec<u32>, ReadbackError> {
     let key = IvKey {
         iv_step: config.iv_step,
         iv_min: config.iv_min,
@@ -197,7 +198,7 @@ pub async fn run_mt_seedhigh_candidates_cached(
 pub async fn run_mt_seedhigh_candidates_cached_multi(
     ctx: &infra::gpu::context::GpuContext,
     configs: &[GpuIvConfig],
-) -> Result<Vec<u32>, wgpu::BufferAsyncError> {
+) -> Result<Vec<u32>, ReadbackError> {
     if configs.is_empty() {
         return Ok(Vec::new());
     }
@@ -226,7 +227,7 @@ mod tests {
     #[ignore = "requires a GPU and benchmarks the full seed_high search"]
     fn test_mt_seedhigh_speed() {
         pollster::block_on(async {
-            let ctx = GpuContext::new().await;
+            let ctx = GpuContext::new().await.expect("GPU setup failed");
 
             let iv_min: [u32; 6] = [31u32, 31u32, 31u32, 8, 31u32, 31u32];
             let iv_max: [u32; 6] = [31u32, 31u32, 31u32, 31, 31u32, 31u32];

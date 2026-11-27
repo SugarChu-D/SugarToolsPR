@@ -1,3 +1,4 @@
+use crate::SearchError;
 use std::collections::HashSet;
 
 use infra::gpu::context::GpuContext;
@@ -33,9 +34,9 @@ pub async fn pup_search(
     ds_config: DSConfig,
     wild_max_advances: u32,
     workgroup_size: WorkgroupSize,
-) -> Vec<PupSearchResult> {
+) -> Result<Vec<PupSearchResult>, SearchError> {
     let batch_size = BATCH_DATES;
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
 
@@ -61,7 +62,7 @@ pub async fn pup_search(
                     &is_target_pup,
                     batch_size,
                 )
-                .await;
+                .await?;
                 dates.clear();
             }
         }
@@ -79,10 +80,10 @@ pub async fn pup_search(
             &is_target_pup,
             batch_size,
         )
-        .await;
+        .await?;
     }
 
-    results
+    Ok(results)
 }
 
 pub async fn sawk_search(
@@ -91,9 +92,9 @@ pub async fn sawk_search(
     wild_max_advances: u32,
     iv_step: u32,
     workgroup_size: WorkgroupSize,
-) -> Vec<PupSearchResult> {
+) -> Result<Vec<PupSearchResult>, SearchError> {
     let batch_size = BATCH_DATES;
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
 
@@ -134,7 +135,7 @@ pub async fn sawk_search(
                             &is_target_sawk,
                             batch_size,
                         )
-                        .await;
+                        .await?;
                         dates.clear();
                     }
                 }
@@ -154,10 +155,10 @@ pub async fn sawk_search(
             &is_target_sawk,
             batch_size,
         )
-        .await;
+        .await?;
     }
 
-    results
+    Ok(results)
 }
 
 #[expect(
@@ -175,12 +176,9 @@ async fn collect_gpu_results(
     seen_seed0: &mut HashSet<u64>,
     is_target: &dyn Fn(&WildPoke) -> bool,
     batch_size: usize,
-) {
+) -> Result<(), SearchError> {
     let base_results =
-        match run_result_base_seedhigh_by_dates(ctx, ds_config, params, dates, batch_size).await {
-            Ok(v) => v,
-            Err(_) => return,
-        };
+        run_result_base_seedhigh_by_dates(ctx, ds_config, params, dates, batch_size).await?;
 
     for base in base_results.into_iter() {
         let ResultBase {
@@ -214,6 +212,7 @@ async fn collect_gpu_results(
             wild_advances,
         });
     }
+    Ok(())
 }
 
 fn is_target_pup(pup: &WildPoke) -> bool {
@@ -252,7 +251,8 @@ mod tests {
         };
         let start = Instant::now();
         let results =
-            pollster::block_on(async { pup_search(ds_config, 70, WorkgroupSize::W256).await });
+            pollster::block_on(async { pup_search(ds_config, 70, WorkgroupSize::W256).await })
+                .expect("search failed");
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);
@@ -288,7 +288,8 @@ mod tests {
         let start = Instant::now();
         let results = pollster::block_on(async {
             sawk_search(ds_config, 30, 100, 0, WorkgroupSize::W256).await
-        });
+        })
+        .expect("search failed");
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);
