@@ -12,23 +12,19 @@ pub struct WildPoke {
 
 impl WildPoke {
     pub fn ability(&self) -> Option<u8> {
-        if self.poke_code.is_none() {
-            return None;
-        }
+        self.poke_code?;
         Some((((self.poke_code.unwrap() >> 16) ^ 1) % 2) as u8)
     }
 
     pub fn gender(&self) -> Option<u8> {
-        if self.poke_code.is_none() {
-            return None;
-        }
+        self.poke_code?;
         Some((self.poke_code.unwrap() & 0xFF) as u8)
     }
 }
 
 impl Lcg {
     pub fn get_wild_poke_bw1(&mut self) -> WildPoke {
-        let mut lcg_local = self.clone();
+        let mut lcg_local = *self;
         if lcg_local.rand(100) > 9 {
             return WildPoke::default();
         }
@@ -42,7 +38,7 @@ impl Lcg {
     }
 
     pub fn get_wild_poke_bw2(&mut self) -> WildPoke {
-        let mut lcg_local = self.clone();
+        let mut lcg_local = *self;
         if lcg_local.rand(100) > 20 {
             return WildPoke::default();
         }

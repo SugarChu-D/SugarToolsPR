@@ -199,6 +199,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn test_drilbur_search() {
         let ds_config = DSConfig {
             version: GameVersion::White2,

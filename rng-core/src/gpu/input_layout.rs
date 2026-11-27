@@ -60,50 +60,6 @@ impl GpuInput {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::models::field_range::FieldRange;
-    use crate::models::game_date_iterator::GameDateSpec;
-    use crate::models::game_version::GameVersion;
-
-    #[test]
-    fn test_gpu_input_iterator_next_batch() {
-        let ds_config = DSConfig::new(
-            GameVersion::White2,
-            crate::models::Region::JPN,
-            0x10F7,
-            false,
-            0x0009bf6d93ce,
-        );
-        let datespec = GameDateSpec {
-            year: FieldRange { min: 33, max: 33 },
-            month: FieldRange { min: 8, max: 8 },
-            day: FieldRange { min: 27, max: 28 },
-        };
-
-        let mut it = GPUInputIterator::new(
-            ds_config,
-            datespec,
-            [0, 23],
-            [0, 59],
-            [0, 59],
-            2,
-            [0; 6],
-            [31; 6],
-        );
-
-        let batch1 = it.next_batch(1);
-        assert_eq!(batch1.len(), 1);
-
-        let batch2 = it.next_batch(4);
-        assert_eq!(batch2.len(), 1);
-
-        let batch3 = it.next_batch(1);
-        assert!(batch3.is_empty());
-    }
-}
-
 /**
  * イテレータ
  */
@@ -219,5 +175,49 @@ impl GPUInputIterator {
 
         // 完全終了
         self.finished = true;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::field_range::FieldRange;
+    use crate::models::game_date_iterator::GameDateSpec;
+    use crate::models::game_version::GameVersion;
+
+    #[test]
+    fn test_gpu_input_iterator_next_batch() {
+        let ds_config = DSConfig::new(
+            GameVersion::White2,
+            crate::models::Region::JPN,
+            0x10F7,
+            false,
+            0x0009bf6d93ce,
+        );
+        let datespec = GameDateSpec {
+            year: FieldRange { min: 33, max: 33 },
+            month: FieldRange { min: 8, max: 8 },
+            day: FieldRange { min: 27, max: 28 },
+        };
+
+        let mut it = GPUInputIterator::new(
+            ds_config,
+            datespec,
+            [0, 23],
+            [0, 59],
+            [0, 59],
+            2,
+            [0; 6],
+            [31; 6],
+        );
+
+        let batch1 = it.next_batch(1);
+        assert_eq!(batch1.len(), 1);
+
+        let batch2 = it.next_batch(4);
+        assert_eq!(batch2.len(), 1);
+
+        let batch3 = it.next_batch(1);
+        assert!(batch3.is_empty());
     }
 }

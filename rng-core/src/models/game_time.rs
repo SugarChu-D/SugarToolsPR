@@ -40,7 +40,7 @@ impl GameTime {
             1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
             4 | 6 | 9 | 11 => 30,
             2 => {
-                if self.year % 4 == 0 && self.year % 100 != 0 {
+                if self.year.is_multiple_of(4) && !self.year.is_multiple_of(100) {
                     29
                 } else {
                     28
@@ -115,7 +115,7 @@ impl GameTime {
         let hex_minute: u8 = ((self.minute / 10) << 4) | (self.minute % 10);
         let hex_second: u8 = ((self.second / 10) << 4) | (self.second % 10);
 
-        ((hex_hour as u32) << 24) | ((hex_minute as u32) << 16) | ((hex_second as u32) << 8) | 0
+        ((hex_hour as u32) << 24) | ((hex_minute as u32) << 16) | ((hex_second as u32) << 8)
     }
 }
 

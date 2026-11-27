@@ -12,6 +12,12 @@ pub struct Grottos {
     pub grottos: [Grotto; 20],
 }
 
+impl Default for Grottos {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Grottos {
     pub fn new() -> Self {
         Self {
@@ -30,7 +36,7 @@ impl Grottos {
     }
 
     pub fn fill_grottos(&mut self, lcg: &Lcg) {
-        let mut lcg_local = lcg.clone();
+        let mut lcg_local = *lcg;
         for i in 0..20 {
             // もし埋まっているならスキップ
             if self.grottos[i].sub_slot.is_some() {

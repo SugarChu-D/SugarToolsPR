@@ -241,7 +241,7 @@ fn process_base_results(
             let mut tepig_frames = Vec::new();
             for frame in MIN_TEPIG_NATURE..=MAX_TEPIG_NATURE {
                 if rng.get_nature() == nat {
-                    tepig_frames.push((frame + offset & 0xFFFFFFFF) as u32);
+                    tepig_frames.push(((frame + offset) & 0xFFFFFFFF) as u32);
                 }
             }
             if tepig_frames.is_empty() {

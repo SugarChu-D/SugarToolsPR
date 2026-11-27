@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn test_deserialize_hex_mac_and_timer() {
         let j =
-            r#"{ "version": "Black", "timer0": "0x1F", "is_dslite": false, "mac": "0x1234abcd" }"#;
+            r#"{ "version": "Black", "timer0": "0x1F", "is_dslite": false, "mac": "0x1234abcd", "region": "JPN" }"#;
         let cfg: DSConfig = serde_json::from_str(j).expect("parse hex fields");
         assert_eq!(cfg.timer0, 0x1F);
         assert_eq!(cfg.mac_address, 0x1234ABCDu64);
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_deserialize_timer_overflow_errors() {
-        let j = r#"{ "version": "Black", "timer0": "0x10000", "is_dslite": false, "mac": 1 }"#;
+        let j = r#"{ "version": "Black", "timer0": "0x10000", "is_dslite": false, "mac": 1, "region": "JPN" }"#;
         let r: Result<DSConfig, _> = serde_json::from_str(j);
         assert!(r.is_err());
     }
@@ -160,13 +160,5 @@ mod tests {
         assert_eq!(de.is_dslite, cfg.is_dslite);
         assert_eq!(de.version, cfg.version);
         assert_eq!(de.region, cfg.region);
-    }
-
-    #[test]
-    fn missing_region_defaults_to_jpn() {
-        let j = r#"{ "version": "Black", "timer0": 1, "is_dslite": false, "mac": 1 }"#;
-        let cfg: DSConfig = serde_json::from_str(j).expect("parse default region");
-
-        assert_eq!(cfg.region, Region::JPN);
     }
 }

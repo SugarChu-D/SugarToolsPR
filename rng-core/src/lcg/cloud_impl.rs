@@ -44,7 +44,7 @@ impl Lcg {
         trainer_tile: &[i32; 2],
         map_tile: &T,
     ) -> [i32; 2] {
-        if self.can_get_cloud() == false {
+        if !self.can_get_cloud() {
             return [0, 0];
         }
 
@@ -90,11 +90,11 @@ impl Lcg {
             }
         }
 
-        return [0, 0];
+        [0, 0]
     }
 
     pub fn get_cloud_poke(&self) -> WildPoke {
-        let mut lcg_local = self.clone();
+        let mut lcg_local = *self;
         let trigger = lcg_local.rand(1000);
         if trigger > 400 {
             return WildPoke::default();

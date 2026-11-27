@@ -69,12 +69,12 @@ pub fn search_snivy(
         .collect::<Vec<_>>()
         .into_iter();
 
-    let mut seed_iter = rng_core::initial_seed::SeedIter {
+    let seed_iter = rng_core::initial_seed::SeedIter {
         config: &ds_config,
         inner,
     };
 
-    while let Some(seed_result_base) = seed_iter.next() {
+    for seed_result_base in seed_iter {
         let ivs = mt_0(seed_result_base.seed0, 10);
 
         // Aが30以上かつSが24以上でなければスキップ

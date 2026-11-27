@@ -31,7 +31,7 @@ impl GameDate {
             1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
             4 | 6 | 9 | 11 => 30,
             2 => {
-                if self.year % 4 == 0 && self.year % 100 != 0 {
+                if self.year.is_multiple_of(4) && !self.year.is_multiple_of(100) {
                     29
                 } else {
                     28

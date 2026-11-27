@@ -61,12 +61,12 @@ pub fn plasma_skip_search_spring(
         .collect::<Vec<_>>()
         .into_iter();
 
-    let mut seed_iter = rng_core::initial_seed::SeedIter {
+    let seed_iter = rng_core::initial_seed::SeedIter {
         config: &ds_config,
         inner,
     };
 
-    while let Some(seed_result_base) = seed_iter.next() {
+    for seed_result_base in seed_iter {
         let first_cloud = find_valid_clouds(
             seed_result_base.seed1,
             39,
@@ -189,10 +189,10 @@ fn find_valid_clouds(
         //     panic!("LCG step does not match expected frame. Expected: {}, Actual: {}, Offset: {}", frame, lcg.step, offset);
         // }
         lcg.next();
-        if (lcg.step as u32 - frame_start - offset) % 2 == 0 {
+        if (lcg.step as u32 - frame_start - offset).is_multiple_of(2) {
             continue;
         }
-        let mut lcg_clone = lcg.clone();
+        let mut lcg_clone = lcg;
         for trainer_tile in trainer_tiles {
             let cloud_tile = lcg_clone.get_cloud(trainer_tile, valid_tiles);
             if target_tiles.contains(&cloud_tile) {

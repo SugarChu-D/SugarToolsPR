@@ -7,7 +7,7 @@ impl EncoderUtils {
         }
         let x64 = x as u64;
         let d64 = divisor as u64;
-        ((x64 + d64 - 1) / d64) as u32
+        x64.div_ceil(d64) as u32
     }
 
     pub fn dispatch_1d(

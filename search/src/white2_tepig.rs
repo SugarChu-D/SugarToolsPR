@@ -82,7 +82,7 @@ fn tepig_iv_check(ivs: [u8; 6], nat: &Nature) -> bool {
     match nat.id() {
         4 => tepig_iv_check_naughty(ivs),
         19 => tepig_iv_check_rash(ivs),
-        any => panic!("Invalid Nature: {}", any.to_string()),
+        any => panic!("Invalid Nature: {}", any),
     }
 }
 
@@ -152,7 +152,7 @@ async fn tepig_search_by_dates(
     let (iv_min, iv_max): ([u32; 6], [u32; 6]) = match nat.id() {
         4 => ([27, 29, 29, 29, 0, 25], [31, 31, 31, 31, 31, 25]), // Naughty
         19 => ([28, 29, 30, 30, 0, 30], [31, 31, 31, 31, 31, 31]), // Rash
-        any => panic!("Invalid Nature: {}", any.to_string()),
+        any => panic!("Invalid Nature: {}", any),
     };
 
     let params = GpuInputParams::new(config, [0, 23], [0, 59], [0, 59], 16, iv_min, iv_max);
@@ -296,7 +296,7 @@ fn process_base_results(
             let mut tepig_frames = Vec::new();
             for frame in MIN_TEPIG_NATURE..=MAX_TEPIG_NATURE {
                 if rng.get_nature() == nat {
-                    tepig_frames.push((frame + offset & 0xFFFFFFFF) as u32);
+                    tepig_frames.push(((frame + offset) & 0xFFFFFFFF) as u32);
                 }
             }
             if tepig_frames.is_empty() {
@@ -367,7 +367,7 @@ fn find_wild_advances_bw2(
 }
 
 fn is_target_pidove(dov: &WildPoke) -> bool {
-    return matches!(dov.slot, Some(0..20) | Some(80..85));
+    matches!(dov.slot, Some(0..20) | Some(80..85))
 }
 
 fn is_target_psyduck(duck: &WildPoke) -> bool {
