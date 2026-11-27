@@ -30,6 +30,10 @@ pub struct GpuIvConfig {
 
 #[cfg(test)]
 impl GpuInput {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "GPU入力レイアウトの各フィールドをテストから個別に指定する"
+    )]
     pub fn test_new(
         nazo: [u32; 5],
         vcount_timer0_as_data5: u32,
@@ -115,6 +119,10 @@ impl Iterator for GPUInputIterator {
 }
 
 impl GPUInputIterator {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "既存の公開コンストラクタの呼び出し形式を維持する"
+    )]
     pub fn new(
         ds_config: DSConfig,
         datespec: GameDateSpec,

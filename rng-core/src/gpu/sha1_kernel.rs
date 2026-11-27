@@ -570,6 +570,10 @@ pub async fn run_sha1_seedhigh_filter(
     Ok(results)
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "検索リクエスト型の導入までは既存の公開APIを維持する"
+)]
 pub async fn run_sha1_seedhigh_search(
     ctx: &infra::gpu::context::GpuContext,
     ds_config: DSConfig,

@@ -31,11 +31,11 @@ fn init_table(table: &mut [u32], seed: u32, init_range: usize) {
     table[0] = seed;
 
     let mut prev = table[0];
-    for i in 1..=init_range {
+    for (i, entry) in table[..=init_range].iter_mut().enumerate().skip(1) {
         prev = INIT_MULTIPLIER
             .wrapping_mul(prev ^ (prev >> 30))
             .wrapping_add(i as u32);
-        table[i] = prev;
+        *entry = prev;
     }
 }
 
@@ -44,7 +44,7 @@ fn generate_ivs_code(table: &[u32], p: u8) -> [u8; 6] {
     let mut ivs_values = [0u8; 6];
 
     // メインループ: p から p+6 まで（6回）
-    for j in 0..6 {
+    for (j, iv) in ivs_values.iter_mut().enumerate() {
         let i = p as usize + j;
 
         let x = (table[i] & UPPER_MASK) | (table[i + 1] & LOWER_MASK);
@@ -54,7 +54,7 @@ fn generate_ivs_code(table: &[u32], p: u8) -> [u8; 6] {
         // テンパリング処理
         let tempered = tempering(val);
 
-        ivs_values[j] = tempered;
+        *iv = tempered;
     }
 
     ivs_values

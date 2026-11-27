@@ -78,14 +78,14 @@ impl Lcg {
 
     pub fn pt(&mut self, counts: u32) {
         for _ in 0..counts {
-            for i in 0..6 {
-                for j in 0..5 {
-                    if PROBABILITY_TABLE[i][j] == 100 {
+            for row in &PROBABILITY_TABLE {
+                for &threshold in row {
+                    if threshold == 100 {
                         // 100%なら無条件で
                         break;
                     }
                     let r: u32 = (((self.next() >> 32) * 101) >> 32) as u32;
-                    if r <= PROBABILITY_TABLE[i][j] as u32 {
+                    if r <= threshold as u32 {
                         break;
                     }
                 }

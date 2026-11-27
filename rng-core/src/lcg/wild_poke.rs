@@ -28,8 +28,10 @@ impl Lcg {
         if lcg_local.rand(100) > 9 {
             return WildPoke::default();
         }
-        let mut result = WildPoke::default();
-        result.slot = Some(lcg_local.rand(100));
+        let mut result = WildPoke {
+            slot: Some(lcg_local.rand(100)),
+            ..WildPoke::default()
+        };
         lcg_local.next();
         result.poke_code = Some((lcg_local.next() >> 32) as u32);
         result.nature = Some(lcg_local.get_nature());
@@ -42,8 +44,10 @@ impl Lcg {
         if lcg_local.rand(100) > 20 {
             return WildPoke::default();
         }
-        let mut result = WildPoke::default();
-        result.slot = Some(lcg_local.rand(100));
+        let mut result = WildPoke {
+            slot: Some(lcg_local.rand(100)),
+            ..WildPoke::default()
+        };
         lcg_local.next();
         result.poke_code = Some((lcg_local.next() >> 32) as u32);
         result.nature = Some(lcg_local.get_nature());

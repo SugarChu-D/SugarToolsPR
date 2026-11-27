@@ -223,6 +223,7 @@ mod tests {
     use infra::gpu::context::GpuContext;
 
     #[test]
+    #[ignore = "requires a GPU and benchmarks the full seed_high search"]
     fn test_mt_seedhigh_speed() {
         pollster::block_on(async {
             let ctx = GpuContext::new().await;

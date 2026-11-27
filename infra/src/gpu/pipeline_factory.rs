@@ -73,6 +73,7 @@ mod tests {
     use crate::gpu::context::GpuContext;
 
     #[test]
+    #[ignore = "requires a GPU adapter"]
     fn workgroup_size_override_creates_a_pipeline() {
         pollster::block_on(async {
             let ctx = GpuContext::new_with_workgroup_size(64).await;

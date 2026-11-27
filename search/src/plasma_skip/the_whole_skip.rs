@@ -269,7 +269,7 @@ mod tests {
 
         let game_date = GameDate {
             year: 95,
-            month: 08,
+            month: 8,
             day: 31,
         };
 

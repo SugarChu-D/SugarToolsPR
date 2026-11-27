@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use rng_core::gpu::workgroup_size::WorkgroupSize;
 use rng_core::models::ds_config::DSConfig;
@@ -44,13 +44,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn load_config_file(path: &PathBuf) -> Result<Config, Box<dyn Error>> {
+fn load_config_file(path: &Path) -> Result<Config, Box<dyn Error>> {
     let text = fs::read_to_string(path)?;
     let file: Config = toml::from_str(&text)?;
     Ok(file)
 }
 
-fn load_single_profile(path: &PathBuf) -> Result<(DSConfig, Option<u32>), Box<dyn Error>> {
+fn load_single_profile(path: &Path) -> Result<(DSConfig, Option<u32>), Box<dyn Error>> {
     let file = load_config_file(path)?;
     let workgroup_size = file.workgroup_size;
     let mut iter = file.ds_configs.iter();
@@ -74,7 +74,7 @@ fn prompt(label: &str, default: &str) -> Result<String, Box<dyn Error>> {
     }
 }
 
-fn prompt_path(label: &str, default: &PathBuf) -> Result<PathBuf, Box<dyn Error>> {
+fn prompt_path(label: &str, default: &Path) -> Result<PathBuf, Box<dyn Error>> {
     let default_str = default.to_string_lossy();
     let s = prompt(label, &default_str)?;
     Ok(PathBuf::from(s))

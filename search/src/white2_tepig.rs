@@ -204,7 +204,7 @@ async fn tepig_search_by_dates(
         date_batch.clear();
     }
     if !date_batch.is_empty() {
-        let base_results = match run_result_base_seedhigh_by_dates_multi_iv(
+        let base_results = run_result_base_seedhigh_by_dates_multi_iv(
             &ctx,
             config,
             &params,
@@ -213,10 +213,7 @@ async fn tepig_search_by_dates(
             &iv_cfgs,
         )
         .await
-        {
-            Ok(v) => v,
-            Err(_) => Vec::new(),
-        };
+        .unwrap_or_default();
         if let Some(handle) = pending_cpu.take() {
             let batch_results = handle.join().expect("CPU worker thread panicked");
             merge_results(batch_results, &mut results, &mut seen_seed0);

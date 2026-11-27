@@ -64,6 +64,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "requires a GPU adapter"]
     fn gpu_context_can_be_created() {
         pollster::block_on(async {
             let _ctx = GpuContext::new().await;

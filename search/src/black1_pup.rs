@@ -160,6 +160,10 @@ pub async fn sawk_search(
     results
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "検索リクエスト型の導入までは既存のバッチ処理と同じ検索条件を渡す"
+)]
 async fn collect_gpu_results(
     ctx: &GpuContext,
     ds_config: DSConfig,

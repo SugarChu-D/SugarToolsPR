@@ -2,7 +2,7 @@
 
 GUI実装前に、検索処理を安全かつ再利用しやすい形へ整えるためのTODOリスト。
 
-## 現状メモ
+## 初回調査時点のメモ
 
 - `cargo check --workspace` は成功する。
 - `cargo test --workspace --no-run` は成功する。
@@ -28,12 +28,12 @@ GUI実装前に、検索処理を安全かつ再利用しやすい形へ整え�
 
 ### コード品質の基準作り
 
-- [ ] フォーマットのみを行う独立した変更を作成する。
-- [ ] Clippy警告を整理し、意図的に残すものには理由を記録する。
-- [ ] CIで以下を実行する。
-  - [ ] `cargo fmt --all -- --check`
-  - [ ] `cargo clippy --workspace --all-targets -- -D warnings`
-  - [ ] `cargo test --workspace`
+- [x] フォーマットのみを行う独立した変更を作成する（`de78040`）。
+- [x] Clippy警告を整理し、意図的に残すものには理由を記録する。
+- [x] CIに以下のチェックを設定する。
+  - [x] `cargo fmt --all -- --check`
+  - [x] `cargo clippy --workspace --all-targets -- -D warnings`
+  - [x] `cargo test --workspace`
 
 ## Phase 2: GUIから利用する検索API
 

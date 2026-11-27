@@ -74,6 +74,10 @@ impl Lcg {
         }
     }
 
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "乱数を1回進めて状態値を直接返す既存の公開APIを維持する"
+    )]
     pub fn next(&mut self) -> u64 {
         self.state = self
             .state
