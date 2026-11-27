@@ -114,8 +114,7 @@ mod tests {
 
     #[test]
     fn test_deserialize_hex_mac_and_timer() {
-        let j =
-            r#"{ "version": "Black", "timer0": "0x1F", "is_dslite": false, "mac": "0x1234abcd", "region": "JPN" }"#;
+        let j = r#"{ "version": "Black", "timer0": "0x1F", "is_dslite": false, "mac": "0x1234abcd", "region": "JPN" }"#;
         let cfg: DSConfig = serde_json::from_str(j).expect("parse hex fields");
         assert_eq!(cfg.timer0, 0x1F);
         assert_eq!(cfg.mac_address, 0x1234ABCDu64);

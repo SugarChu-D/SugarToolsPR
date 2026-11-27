@@ -109,7 +109,7 @@ impl Lcg {
 
     pub fn rand(&mut self, max: u64) -> u32 {
         let current_state = self.next();
-        
+
         ((current_state >> 32).wrapping_mul(max) >> 32) as u32
     }
 }

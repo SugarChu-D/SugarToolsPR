@@ -176,10 +176,11 @@ pub async fn run_mt_seedhigh_candidates_cached(
 
     if let Some(cache) = SEED_HIGH_CACHE.get()
         && let Ok(map) = cache.lock()
-            && let Some(existing) = map.get(&key) {
-                //println!("seed_high cache hit (len={})", existing.len());
-                return Ok(existing.clone());
-            }
+        && let Some(existing) = map.get(&key)
+    {
+        //println!("seed_high cache hit (len={})", existing.len());
+        return Ok(existing.clone());
+    }
 
     //println!("seed_high cache miss; computing");
     let computed = run_mt_seedhigh_candidates(ctx, config).await?;

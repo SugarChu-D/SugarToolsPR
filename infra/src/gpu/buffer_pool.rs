@@ -77,9 +77,10 @@ impl<'a> BufferPool<'a> {
     pub fn take_staging(&self, size: usize, label: &str) -> wgpu::Buffer {
         if let Ok(mut cache) = self.staging_cache.lock()
             && let Some(cache) = cache.take()
-                && cache.size >= size {
-                    return cache.buffer;
-                }
+            && cache.size >= size
+        {
+            return cache.buffer;
+        }
 
         self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some(label),
