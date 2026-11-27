@@ -643,6 +643,62 @@ mod tests {
     use infra::gpu::context::GpuContext;
 
     #[test]
+    #[ignore = "requires a GPU and scans the full seed_high range"]
+    fn seedhigh_candidates_match_cpu_for_known_seed0() {
+        use crate::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
+        use crate::models::{GameTime, Region, game_date::GameDate};
+        use crate::mt::mt_0;
+        use crate::sha_1::generate_initial_seed0;
+
+        // initial_seed0_matches_known_value と同じ日時・DS設定・キー入力。
+        let config = DSConfig::new(
+            GameVersion::White2,
+            Region::JPN,
+            0x10fa,
+            false,
+            0x0009_bf6d_93ce,
+        );
+        let time = GameTime::new(63, 10, 1, 18, 39, 19);
+        let known_seed0 = 0x416B_FDD6_B147_33D2;
+        let iv_step = 2;
+        let target_ivs = mt_0(known_seed0, iv_step);
+
+        let mut expected = Vec::new();
+        for keys in KeyPresses::iter_valid() {
+            let seed0 = generate_initial_seed0(&config, &time, keys);
+            if mt_0(seed0, iv_step) == target_ivs {
+                expected.push((keys.raw(), seed0));
+            }
+        }
+        assert!(expected.contains(&(0x2fff, known_seed0)));
+
+        let target = target_ivs.map(u32::from);
+        let params = GpuInputParams::new(
+            config,
+            [u32::from(time.hour); 2],
+            [u32::from(time.minute); 2],
+            [u32::from(time.second); 2],
+            u32::from(iv_step),
+            target,
+            target,
+        );
+        let date = GameDate::new(time.year, time.month, time.day);
+        let candidates = pollster::block_on(async {
+            let ctx = GpuContext::new().await;
+            run_result_base_seedhigh_by_dates(&ctx, config, &params, &[date], 1).await
+        })
+        .expect("GPU candidate search failed");
+        let mut actual = Vec::new();
+        for candidate in candidates {
+            assert_eq!(candidate.game_time, time);
+            actual.push((candidate.key_presses.raw(), candidate.seed0));
+        }
+        actual.sort_unstable();
+        expected.sort_unstable();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     #[ignore]
     fn test_sha1_mt_matches_cpu_single_case() {
         pollster::block_on(async {
