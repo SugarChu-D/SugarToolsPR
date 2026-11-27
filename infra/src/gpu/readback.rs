@@ -2,15 +2,7 @@ use bytemuck::Pod;
 
 use super::context::GpuContext;
 
-#[derive(Debug, thiserror::Error)]
-pub enum ReadbackError {
-    #[error("GPU polling failed: {0}")]
-    Poll(#[from] wgpu::PollError),
-    #[error("GPU buffer mapping failed: {0}")]
-    Map(#[from] wgpu::BufferAsyncError),
-    #[error("GPU buffer mapping callback was dropped")]
-    CallbackDropped,
-}
+pub use super::error::ReadbackError;
 
 pub struct Readback<'a> {
     device: &'a wgpu::Device,
