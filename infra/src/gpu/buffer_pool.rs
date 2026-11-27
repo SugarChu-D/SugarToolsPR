@@ -26,19 +26,11 @@ impl<'a> BufferPool<'a> {
         }
     }
 
-    pub fn create<T>(
-        &self,
-        size: usize,
-        kind: BufferKind,
-        label: &str,
-    ) -> BufferHandle<T> {
+    pub fn create<T>(&self, size: usize, kind: BufferKind, label: &str) -> BufferHandle<T> {
         let usage = match kind {
-            BufferKind::Input =>
-                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            BufferKind::Output =>
-                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            BufferKind::Staging =>
-                wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            BufferKind::Input => wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            BufferKind::Output => wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            BufferKind::Staging => wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         };
 
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -48,7 +40,10 @@ impl<'a> BufferPool<'a> {
             mapped_at_creation: false,
         });
 
-        BufferHandle { buffer, _marker: PhantomData }
+        BufferHandle {
+            buffer,
+            _marker: PhantomData,
+        }
     }
 
     pub fn create_init<T: Pod>(
@@ -58,21 +53,23 @@ impl<'a> BufferPool<'a> {
         label: &str,
     ) -> BufferHandle<T> {
         let usage = match kind {
-            BufferKind::Input =>
-                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            BufferKind::Output =>
-                wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            BufferKind::Staging =>
-                wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            BufferKind::Input => wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            BufferKind::Output => wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            BufferKind::Staging => wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         };
 
-        let buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some(label),
-            contents: bytemuck::cast_slice(contents),
-            usage,
-        });
+        let buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: bytemuck::cast_slice(contents),
+                usage,
+            });
 
-        BufferHandle { buffer, _marker: PhantomData }
+        BufferHandle {
+            buffer,
+            _marker: PhantomData,
+        }
     }
 
     /// Take a staging buffer from the cache (or create one).

@@ -48,7 +48,9 @@ impl VersionConfig {
                 fields.next() == Some(version_name.as_str())
                     && fields.next() == Some(region_name.as_str())
             })
-            .unwrap_or_else(|| panic!("missing nazo_vcount.csv row for {version_name}/{region_name}"));
+            .unwrap_or_else(|| {
+                panic!("missing nazo_vcount.csv row for {version_name}/{region_name}")
+            });
 
         let mut fields = row.split(',');
         fields.next();

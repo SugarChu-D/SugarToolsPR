@@ -5,16 +5,15 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 
 use rng_core::gpu::workgroup_size::WorkgroupSize;
-use rng_core::lcg::tid_impl::get_frigate_pass;
 use rng_core::lcg::nature::Nature;
+use rng_core::lcg::tid_impl::get_frigate_pass;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::game_version::GameVersion;
 
-use search::white2_tepig::white2_tepig_search;
 use search::white2_tepig::BW2Mode;
 use search::white2_tepig::TepigSearchResult;
+use search::white2_tepig::white2_tepig_search;
 use serde::Deserialize;
-
 
 #[derive(Deserialize)]
 struct Config {
@@ -39,13 +38,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mode = if nature.id() == 19 {
         prompt_mode()?
-    } else { BW2Mode::Normal };
+    } else {
+        BW2Mode::Normal
+    };
 
     let (year, month, day) = prompt_date()?;
     let workgroup_size = WorkgroupSize::try_from_u32(workgroup_size_opt.unwrap_or(256))
         .map_err(|e| -> Box<dyn Error> { e.into() })?;
-    let results =
-        pollster::block_on(async { white2_tepig_search(ds_config, year, month, day, nature, mode, workgroup_size).await });
+    let results = pollster::block_on(async {
+        white2_tepig_search(ds_config, year, month, day, nature, mode, workgroup_size).await
+    });
 
     let output_path = default_output_path();
     let text = build_text(&results);
@@ -65,9 +67,7 @@ fn load_single_profile(path: &PathBuf) -> Result<(DSConfig, Option<u32>), Box<dy
     let file = load_config_file(path)?;
     let workgroup_size = file.workgroup_size;
     let mut iter = file.ds_configs.iter();
-    let (name, cfg) = iter
-        .next()
-        .ok_or("no profiles found in config.toml")?;
+    let (name, cfg) = iter.next().ok_or("no profiles found in config.toml")?;
     if iter.next().is_some() {
         eprintln!("warning: multiple profiles found; using '{}'", name);
     }
@@ -157,14 +157,22 @@ fn build_text(results: &[TepigSearchResult]) -> String {
             "date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key: {}\n",
             r.year, r.month, r.day, r.hour, r.minute, r.second, r.key_presses
         ));
-        out.push_str(&format!("TID: {} Frigate: {}\n", r.tid, get_frigate_pass(r.tid)));
+        out.push_str(&format!(
+            "TID: {} Frigate: {}\n",
+            r.tid,
+            get_frigate_pass(r.tid)
+        ));
         out.push_str(&format!("ivs=: {:?} iv_step: {}\n", r.ivs, r.tepig_iv_step));
         out.push_str(&format!("tepig_frames: {:?}\n", r.tepig_frames));
 
         out.push_str("pidove_frames:\n");
         for (frame, poke) in &r.pidove_frames {
             let nature = poke.nature.as_ref().map(|n| n.name()).unwrap_or("None");
-            let lv = if poke.slot.is_some_and(|s| s < 20) { "Lv.2" } else { "Lv.4" };
+            let lv = if poke.slot.is_some_and(|s| s < 20) {
+                "Lv.2"
+            } else {
+                "Lv.4"
+            };
             out.push_str(&format!("{}:{}:{} ", frame, lv, nature));
         }
         out.push('\n');

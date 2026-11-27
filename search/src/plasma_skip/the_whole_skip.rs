@@ -1,10 +1,10 @@
 use super::charge_stone_tile::*;
-use rng_core::lcg::{self, Lcg};
-use rng_core::models::{FieldRange, GameTimeSpec, game_time_iterator};
-use rng_core::models::DSConfig;
-use rng_core::models::game_date::{GameDate};
 use rng_core::initial_seed::SeedResultBase;
+use rng_core::lcg::{self, Lcg};
+use rng_core::models::DSConfig;
+use rng_core::models::game_date::GameDate;
 use rng_core::models::key_presses::KeyPresses;
+use rng_core::models::{FieldRange, GameTimeSpec, game_time_iterator};
 
 #[derive(Debug, Clone)]
 pub struct Cloud {
@@ -24,13 +24,25 @@ pub struct PlasmaSkipSearchResult {
     pub fifth_cloud: Vec<Cloud>,
 }
 
-pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Vec<PlasmaSkipSearchResult> {
+pub fn plasma_skip_search_spring(
+    ds_config: DSConfig,
+    game_date: GameDate,
+) -> Vec<PlasmaSkipSearchResult> {
     let mut results = Vec::new();
 
     let spec = GameTimeSpec {
-        year: FieldRange { min: game_date.year, max: game_date.year },
-        month: FieldRange { min: game_date.month, max: game_date.month },
-        day: FieldRange { min: game_date.day, max: game_date.day },
+        year: FieldRange {
+            min: game_date.year,
+            max: game_date.year,
+        },
+        month: FieldRange {
+            min: game_date.month,
+            max: game_date.month,
+        },
+        day: FieldRange {
+            min: game_date.day,
+            max: game_date.day,
+        },
         hour: FieldRange { min: 23, max: 23 },
         minute: FieldRange { min: 20, max: 45 },
         second: FieldRange { min: 5, max: 8 },
@@ -38,10 +50,16 @@ pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Ve
 
     let time_iter = game_time_iterator::GameTimeIterator::new(spec);
     let valid_key_presses: Vec<_> = KeyPresses::iter_valid().collect();
-    
-    let inner = time_iter.flat_map(|game_time| {
-        valid_key_presses.clone().into_iter().map(move |key_presses| (game_time, key_presses))
-    }).collect::<Vec<_>>().into_iter();
+
+    let inner = time_iter
+        .flat_map(|game_time| {
+            valid_key_presses
+                .clone()
+                .into_iter()
+                .map(move |key_presses| (game_time, key_presses))
+        })
+        .collect::<Vec<_>>()
+        .into_iter();
 
     let mut seed_iter = rng_core::initial_seed::SeedIter {
         config: &ds_config,
@@ -81,7 +99,7 @@ pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Ve
             SECOND_CLOUD_TILE_RIGHT,
             CHARGE_STONE_B1F_VALID_TILES,
         );
-        
+
         let second_cloud = [second_cloud_left, second_cloud_right].concat();
         if second_cloud.is_empty() {
             continue;
@@ -130,7 +148,7 @@ pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Ve
         if fifth_cloud.is_empty() {
             continue;
         }
-        
+
         let mut lcg = Lcg::new(seed_result_base.seed1);
         lcg.offset_seed1(lcg::OffsetType::Bw1Continue);
         let offset = lcg.step as u32;
@@ -145,10 +163,9 @@ pub fn plasma_skip_search_spring(ds_config: DSConfig, game_date: GameDate) -> Ve
             fifth_cloud: fifth_cloud.clone(),
         });
     }
-    
+
     results
 }
-
 
 fn find_valid_clouds(
     seed1: u64,
@@ -195,8 +212,8 @@ fn find_valid_clouds(
 mod tests {
     use rng_core::lcg::OffsetType::Bw1Continue;
 
-use crate::plasma_skip::charge_stone_tile;
     use super::*;
+    use crate::plasma_skip::charge_stone_tile;
 
     #[test]
     fn test_cloud_impl() {
@@ -218,7 +235,8 @@ use crate::plasma_skip::charge_stone_tile;
 
         lcg.advance(146 - 92 - 3);
 
-        let cloud_second = lcg.get_cloud(&[49, 23], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
+        let cloud_second =
+            lcg.get_cloud(&[49, 23], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
         assert_eq!(cloud_second, [51, 21]);
 
         lcg.advance(230 - 146 - 3);
@@ -228,7 +246,8 @@ use crate::plasma_skip::charge_stone_tile;
 
         lcg.advance(323 - 230 - 3);
 
-        let cloud_fourth = lcg.get_cloud(&[44, 14], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
+        let cloud_fourth =
+            lcg.get_cloud(&[44, 14], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
         assert_eq!(cloud_fourth, [44, 9]);
 
         lcg.advance(392 - 323 - 3);
@@ -236,7 +255,7 @@ use crate::plasma_skip::charge_stone_tile;
         let cloud_fifth = lcg.get_cloud(&[45, 8], charge_stone_tile::CHARGE_STONE_B1F_VALID_TILES);
         assert_eq!(cloud_fifth, [48, 6]);
     }
-    
+
     #[test]
     #[ignore]
     fn test_plasma_skip_search_spring() {
@@ -259,8 +278,16 @@ use crate::plasma_skip::charge_stone_tile;
         for result in results {
             println!("seed1: {:016X}", result.seed_result_base.seed1);
             println!("offset: {}", result.offset);
-            println!("time: {:02}:{:02}:{:02}", result.seed_result_base.game_time.hour, result.seed_result_base.game_time.minute, result.seed_result_base.game_time.second);
-            println!("key presses: {}", result.seed_result_base.key_presses.pressed_keys_string());
+            println!(
+                "time: {:02}:{:02}:{:02}",
+                result.seed_result_base.game_time.hour,
+                result.seed_result_base.game_time.minute,
+                result.seed_result_base.game_time.second
+            );
+            println!(
+                "key presses: {}",
+                result.seed_result_base.key_presses.pressed_keys_string()
+            );
             println!("first cloud: {:?}", result.first_cloud);
             println!("second cloud: {:?}", result.second_cloud);
             println!("third cloud: {:?}", result.third_cloud);

@@ -21,7 +21,6 @@ const fn key_mask(bit: u32) -> u16 {
 const KEY_RANGE_START: u16 = 0x2000;
 const KEY_RANGE_END: u16 = 0x2fff;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeyPresses {
     keys: u16,
@@ -98,7 +97,7 @@ impl KeyPresses {
             keys.join("")
         }
     }
-    
+
     /// 有効なすべてのキー入力値の配列を返す（全探索用）
     pub fn iter_valid() -> impl Iterator<Item = KeyPresses> {
         (KEY_RANGE_START..=KEY_RANGE_END)
@@ -112,9 +111,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_valid_keypresses_length(){
+    fn test_valid_keypresses_length() {
         let it = KeyPresses::iter_valid();
-        let v:Vec<_> = it.collect();
+        let v: Vec<_> = it.collect();
 
         assert_eq!(v.len(), 2160);
     }

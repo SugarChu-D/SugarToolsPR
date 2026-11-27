@@ -7,7 +7,7 @@ pub struct GameDate {
 }
 
 impl GameDate {
-    pub fn new(year: u8, month: u8, day: u8) -> Self{
+    pub fn new(year: u8, month: u8, day: u8) -> Self {
         Self { year, month, day }
     }
 
@@ -63,7 +63,10 @@ impl GameDate {
         let hex_month = ((self.month / 10) << 4) | (self.month % 10);
         let hex_day = ((self.day / 10) << 4) | (self.day % 10);
 
-        ((hex_year as u32) << 24) | ((hex_month as u32) << 16) | ((hex_day as u32) << 8) | self.weekday() as u32
+        ((hex_year as u32) << 24)
+            | ((hex_month as u32) << 16)
+            | ((hex_day as u32) << 8)
+            | self.weekday() as u32
     }
 }
 

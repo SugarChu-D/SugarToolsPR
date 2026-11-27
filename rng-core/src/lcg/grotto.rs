@@ -4,21 +4,25 @@ use super::Lcg;
 pub struct Grotto {
     sub_slot: Option<u32>,
     slot: Option<u32>,
-    gender: Option<u32>
+    gender: Option<u32>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Grottos {
-    pub grottos: [Grotto; 20]
+    pub grottos: [Grotto; 20],
 }
 
 impl Grottos {
-    pub fn new () -> Self {
-        Self { grottos: [Grotto::default(); 20] }
+    pub fn new() -> Self {
+        Self {
+            grottos: [Grotto::default(); 20],
+        }
     }
 
-    pub fn new_game () -> Self {
-        Self { grottos: Self::new_game_grottos() }
+    pub fn new_game() -> Self {
+        Self {
+            grottos: Self::new_game_grottos(),
+        }
     }
 
     pub fn reset_newgame(&mut self) {
@@ -29,9 +33,13 @@ impl Grottos {
         let mut lcg_local = lcg.clone();
         for i in 0..20 {
             // もし埋まっているならスキップ
-            if self.grottos[i].sub_slot.is_some() {continue;}
+            if self.grottos[i].sub_slot.is_some() {
+                continue;
+            }
             // lcgが5以上なら埋めないでスキップ
-            if lcg_local.rand(100) >= 5 {continue;}
+            if lcg_local.rand(100) >= 5 {
+                continue;
+            }
 
             self.grottos[i].sub_slot = Some(lcg_local.rand(4));
             self.grottos[i].slot = Some(lcg_local.rand(100));
@@ -42,11 +50,10 @@ impl Grottos {
     fn new_game_grottos() -> [Grotto; 20] {
         [
             Grotto::default(),
-            Grotto{
+            Grotto {
                 sub_slot: Some(1),
                 slot: Some(0),
-                gender: Some(0)
-                // 5番道路のチラーミィはデフォルトで埋まってる
+                gender: Some(0), // 5番道路のチラーミィはデフォルトで埋まってる
             },
             Grotto::default(),
             Grotto::default(),

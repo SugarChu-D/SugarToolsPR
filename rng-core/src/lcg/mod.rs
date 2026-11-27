@@ -1,9 +1,9 @@
+pub mod cloud_impl;
+pub mod grotto;
+pub mod nature;
 pub mod offset_impl;
 pub mod tid_impl;
-pub mod nature;
-pub mod grotto;
 pub mod wild_poke;
-pub mod cloud_impl;
 
 pub use offset_impl::OffsetType;
 
@@ -13,20 +13,30 @@ const LCG_INCREMENT: u64 = 0x269EC3u64;
 
 #[derive(Clone, Copy)]
 struct Mat {
-    a11: u64, a12: u64,
-    a21: u64, a22: u64,
+    a11: u64,
+    a12: u64,
+    a21: u64,
+    a22: u64,
 }
 
 impl Mat {
     fn mul(self, rhs: Mat) -> Mat {
         Mat {
-            a11: self.a11.wrapping_mul(rhs.a11)
+            a11: self
+                .a11
+                .wrapping_mul(rhs.a11)
                 .wrapping_add(self.a12.wrapping_mul(rhs.a21)),
-            a12: self.a11.wrapping_mul(rhs.a12)
+            a12: self
+                .a11
+                .wrapping_mul(rhs.a12)
                 .wrapping_add(self.a12.wrapping_mul(rhs.a22)),
-            a21: self.a21.wrapping_mul(rhs.a11)
+            a21: self
+                .a21
+                .wrapping_mul(rhs.a11)
                 .wrapping_add(self.a22.wrapping_mul(rhs.a21)),
-            a22: self.a21.wrapping_mul(rhs.a12)
+            a22: self
+                .a21
+                .wrapping_mul(rhs.a12)
                 .wrapping_add(self.a22.wrapping_mul(rhs.a22)),
         }
     }
@@ -34,8 +44,10 @@ impl Mat {
 
 fn mat_pow(mut base: Mat, mut exp: u64) -> Mat {
     let mut result = Mat {
-        a11: 1, a12: 0,
-        a21: 0, a22: 1,
+        a11: 1,
+        a12: 0,
+        a21: 0,
+        a22: 1,
     };
 
     while exp > 0 {
@@ -56,18 +68,21 @@ pub struct Lcg {
 
 impl Lcg {
     pub fn new(seed: u64) -> Self {
-        Self { 
+        Self {
             state: seed,
             step: 0,
         }
     }
 
     pub fn next(&mut self) -> u64 {
-        self.state = self.state.wrapping_mul(LCG_MULTIPLIER).wrapping_add(LCG_INCREMENT);
+        self.state = self
+            .state
+            .wrapping_mul(LCG_MULTIPLIER)
+            .wrapping_add(LCG_INCREMENT);
         self.step += 1;
         self.state
     }
-    
+
     pub fn advance(&mut self, n: u64) -> u64 {
         if n == 0 {
             return self.state;
@@ -82,8 +97,10 @@ impl Lcg {
     /// x_n = mul * x_0 + add
     fn lcg_advance_params(a: u64, c: u64, n: u64) -> (u64, u64) {
         let m = Mat {
-            a11: a, a12: c,
-            a21: 0, a22: 1,
+            a11: a,
+            a12: c,
+            a21: 0,
+            a22: 1,
         };
 
         let p = mat_pow(m, n);
@@ -92,15 +109,14 @@ impl Lcg {
 
     pub fn rand(&mut self, max: u64) -> u32 {
         let current_state = self.next();
-        let value = ((current_state >> 32)
-        .wrapping_mul(max)
-        >> 32) as u32;
+        let value = ((current_state >> 32).wrapping_mul(max) >> 32) as u32;
         value
     }
 }
 
 pub const fn lcg_next(seed: u64) -> u64 {
-    seed.wrapping_mul(LCG_MULTIPLIER).wrapping_add(LCG_INCREMENT)
+    seed.wrapping_mul(LCG_MULTIPLIER)
+        .wrapping_add(LCG_INCREMENT)
 }
 
 #[cfg(test)]
@@ -115,6 +131,11 @@ mod tests {
     #[test]
     fn test_lcg_advance() {
         let mut seed = Lcg::new(0x9B3E7C4BC185AE31);
-        assert_eq!(seed.advance(40), 0x20B7ACE1F983F819, "after 40 steps: {:X}", seed.state);
+        assert_eq!(
+            seed.advance(40),
+            0x20B7ACE1F983F819,
+            "after 40 steps: {:X}",
+            seed.state
+        );
     }
 }

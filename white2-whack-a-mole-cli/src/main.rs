@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use rng_core::gpu::workgroup_size::WorkgroupSize;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::game_version::GameVersion;
-use search::white2_whack_a_mole::{drilbur_search, DrilburSearchResult};
+use search::white2_whack_a_mole::{DrilburSearchResult, drilbur_search};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -34,8 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Workgroup size: {}", workgroup_size.as_u32());
     println!("Searching for Drilbur... ");
 
-    let results =
-        pollster::block_on(async { drilbur_search(ds_config, workgroup_size).await });
+    let results = pollster::block_on(async { drilbur_search(ds_config, workgroup_size).await });
 
     let output_path = default_output_path();
     let text = build_output_text(&results);
@@ -55,9 +54,7 @@ fn load_single_profile(path: &PathBuf) -> Result<(DSConfig, Option<u32>), Box<dy
     let file = load_config_file(path)?;
     let workgroup_size = file.workgroup_size;
     let mut iter = file.ds_configs.iter();
-    let (name, cfg) = iter
-        .next()
-        .ok_or("no profiles found in config.toml")?;
+    let (name, cfg) = iter.next().ok_or("no profiles found in config.toml")?;
     if iter.next().is_some() {
         eprintln!("warning: multiple profiles found; using '{}'", name);
     }
@@ -125,8 +122,18 @@ fn build_output_text(results: &[DrilburSearchResult]) -> String {
             result.ivs[3],
             result.ivs[4],
             result.ivs[5],
-            result.cloud_advances.iter().map(|a| a.to_string()).collect::<Vec<_>>().join("|"),
-            result.wild_advances.iter().map(|a| a.to_string()).collect::<Vec<_>>().join("|"),
+            result
+                .cloud_advances
+                .iter()
+                .map(|a| a.to_string())
+                .collect::<Vec<_>>()
+                .join("|"),
+            result
+                .wild_advances
+                .iter()
+                .map(|a| a.to_string())
+                .collect::<Vec<_>>()
+                .join("|"),
         );
         out.push_str(&line);
     }

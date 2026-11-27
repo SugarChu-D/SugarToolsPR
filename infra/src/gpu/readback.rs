@@ -35,9 +35,9 @@ impl<'a> Readback<'a> {
             mapped_at_creation: false,
         });
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label,
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging_buffer, 0, byte_len);
         self.queue.submit(Some(encoder.finish()));
 
@@ -47,7 +47,7 @@ impl<'a> Readback<'a> {
             tx.send(result).ok();
         });
         let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
-        
+
         match rx.receive().await {
             Some(Ok(())) => {
                 let data = buffer_slice.get_mapped_range();
@@ -73,9 +73,9 @@ impl<'a> Readback<'a> {
         let staging_label = label.unwrap_or("staging");
         let staging_buffer = pool.take_staging(byte_len as usize, staging_label);
 
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label,
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label });
         encoder.copy_buffer_to_buffer(buffer, 0, &staging_buffer, 0, byte_len);
         self.queue.submit(Some(encoder.finish()));
 

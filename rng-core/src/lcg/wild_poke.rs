@@ -11,13 +11,17 @@ pub struct WildPoke {
 }
 
 impl WildPoke {
-    pub fn ability(&self) -> Option<u8>{
-        if self.poke_code.is_none() {return None}
-        Some((((self.poke_code.unwrap() >> 16)^ 1) % 2) as u8)
+    pub fn ability(&self) -> Option<u8> {
+        if self.poke_code.is_none() {
+            return None;
+        }
+        Some((((self.poke_code.unwrap() >> 16) ^ 1) % 2) as u8)
     }
 
     pub fn gender(&self) -> Option<u8> {
-        if self.poke_code.is_none() {return None}
+        if self.poke_code.is_none() {
+            return None;
+        }
         Some((self.poke_code.unwrap() & 0xFF) as u8)
     }
 }
@@ -26,7 +30,7 @@ impl Lcg {
     pub fn get_wild_poke_bw1(&mut self) -> WildPoke {
         let mut lcg_local = self.clone();
         if lcg_local.rand(100) > 9 {
-            return WildPoke::default()
+            return WildPoke::default();
         }
         let mut result = WildPoke::default();
         result.slot = Some(lcg_local.rand(100));
@@ -40,7 +44,7 @@ impl Lcg {
     pub fn get_wild_poke_bw2(&mut self) -> WildPoke {
         let mut lcg_local = self.clone();
         if lcg_local.rand(100) > 20 {
-            return WildPoke::default()
+            return WildPoke::default();
         }
         let mut result = WildPoke::default();
         result.slot = Some(lcg_local.rand(100));
@@ -86,7 +90,12 @@ mod tests {
 
         println!(
             "slot={:?}, poke_code={:?}, nature={:?}, gender={:?}, ability={:?}, item={:?}",
-            pup.slot, pup.poke_code, pup.nature, pup.gender(), pup.ability(), pup.item
+            pup.slot,
+            pup.poke_code,
+            pup.nature,
+            pup.gender(),
+            pup.ability(),
+            pup.item
         );
     }
 }

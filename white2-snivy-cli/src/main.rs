@@ -54,9 +54,7 @@ fn load_single_profile(path: &PathBuf) -> Result<(DSConfig, Option<u32>), Box<dy
     let file = load_config_file(path)?;
     let workgroup_size = file.workgroup_size;
     let mut iter = file.ds_configs.iter();
-    let (name, cfg) = iter
-        .next()
-        .ok_or("no profiles found in config.toml")?;
+    let (name, cfg) = iter.next().ok_or("no profiles found in config.toml")?;
     if iter.next().is_some() {
         eprintln!("warning: multiple profiles found; using '{}'", name);
     }
@@ -114,7 +112,11 @@ fn build_text(results: &[W2SnivySearchResult]) -> String {
             "date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key: {}\n",
             r.year, r.month, r.day, r.hour, r.minute, r.second, r.key_presses
         ));
-        out.push_str(&format!("TID: {} Frigate: {}\n", r.tid, get_frigate_pass(r.tid)));
+        out.push_str(&format!(
+            "TID: {} Frigate: {}\n",
+            r.tid,
+            get_frigate_pass(r.tid)
+        ));
         out.push_str(&format!("ivs=: {:?} iv_step: {}\n", r.ivs, r.tepig_iv_step));
         out.push_str(&format!("tepig_frames: {:?}\n", r.tepig_frames));
 

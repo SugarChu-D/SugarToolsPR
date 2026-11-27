@@ -3,7 +3,7 @@ pub enum WorkgroupSize {
     W32,
     W64,
     W128,
-    W256
+    W256,
 }
 
 impl WorkgroupSize {
@@ -12,8 +12,8 @@ impl WorkgroupSize {
             Self::W32 => 32,
             Self::W64 => 64,
             Self::W128 => 128,
-            Self::W256 => 256
-        } 
+            Self::W256 => 256,
+        }
     }
 
     pub fn try_from_u32(value: u32) -> Result<Self, String> {
@@ -22,7 +22,7 @@ impl WorkgroupSize {
             64 => Ok(Self::W64),
             128 => Ok(Self::W128),
             256 => Ok(Self::W256),
-            _ => Err("workgroup_size must be one of 64, 128, or 256".into())
+            _ => Err("workgroup_size must be one of 64, 128, or 256".into()),
         }
     }
 }

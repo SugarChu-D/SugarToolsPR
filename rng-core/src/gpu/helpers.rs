@@ -41,7 +41,11 @@ impl GpuInputParams {
             vcfg.nazo_values.nazo5,
         ];
         let vcount_timer0_as_data5 = (vcfg.vcount << 16) | (ds_config.timer0 as u32);
-        let gxframe_xor_frame = if ds_config.is_dslite { 0x0600_0006 } else { 0x0600_0008 };
+        let gxframe_xor_frame = if ds_config.is_dslite {
+            0x0600_0006
+        } else {
+            0x0600_0008
+        };
 
         Self {
             nazo,
@@ -73,7 +77,6 @@ impl GpuInputParams {
             iv_max: self.iv_max,
         }
     }
-
 }
 
 pub async fn run_sha1_mt_by_dates(
@@ -113,7 +116,11 @@ pub async fn run_result_base_by_dates(
     batch_size: usize,
 ) -> Result<Vec<ResultBase>, wgpu::BufferAsyncError> {
     let candidates = run_sha1_mt_by_dates(ctx, params, dates, batch_size).await?;
-    Ok(build_result_base_from_candidates(ds_config, candidates, params.iv_step))
+    Ok(build_result_base_from_candidates(
+        ds_config,
+        candidates,
+        params.iv_step,
+    ))
 }
 
 pub async fn run_result_base_seedhigh_by_dates(
@@ -145,13 +152,21 @@ pub async fn run_result_base_seedhigh_by_dates(
         inputs.push(params.with_date(date));
         if inputs.len() >= batch {
             let chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
-            results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
+            results.append(&mut build_result_base_from_candidates(
+                ds_config,
+                chunk,
+                params.iv_step,
+            ));
             inputs.clear();
         }
     }
     if !inputs.is_empty() {
         let chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
-        results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
+        results.append(&mut build_result_base_from_candidates(
+            ds_config,
+            chunk,
+            params.iv_step,
+        ));
     }
 
     Ok(results)
@@ -184,13 +199,21 @@ pub async fn run_result_base_seedhigh_by_dates_multi_iv(
         inputs.push(params.with_date(date));
         if inputs.len() >= batch {
             let chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
-            results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
+            results.append(&mut build_result_base_from_candidates(
+                ds_config,
+                chunk,
+                params.iv_step,
+            ));
             inputs.clear();
         }
     }
     if !inputs.is_empty() {
         let chunk = sha1_kernel::run_sha1_seedhigh_filter(ctx, &inputs, &seed_highs).await?;
-        results.append(&mut build_result_base_from_candidates(ds_config, chunk, params.iv_step));
+        results.append(&mut build_result_base_from_candidates(
+            ds_config,
+            chunk,
+            params.iv_step,
+        ));
     }
 
     Ok(results)

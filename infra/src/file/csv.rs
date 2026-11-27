@@ -58,10 +58,8 @@ pub fn write_csv<T: CsvRecord>(path: impl AsRef<Path>, records: &[T]) -> io::Res
 }
 
 fn escape_field(value: &str) -> String {
-    let needs_quotes = value.contains(',')
-        || value.contains('"')
-        || value.contains('\n')
-        || value.contains('\r');
+    let needs_quotes =
+        value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r');
     if !needs_quotes {
         return value.to_string();
     }

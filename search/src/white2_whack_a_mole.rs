@@ -1,28 +1,39 @@
-
 use infra::gpu::context::GpuContext;
-use rng_core::result_base::ResultBase;
-use rng_core::models::KeyPresses;
-use rng_core::lcg::nature::Nature;
-use rng_core::lcg::cloud_impl::find_cloud_poke_advances;
-use rng_core::lcg::cloud_impl::find_cloud_exists_advances;
-use rng_core::lcg::OffsetType;
 use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
 use rng_core::gpu::workgroup_size::WorkgroupSize;
+use rng_core::lcg::OffsetType;
+use rng_core::lcg::cloud_impl::find_cloud_exists_advances;
+use rng_core::lcg::cloud_impl::find_cloud_poke_advances;
+use rng_core::lcg::nature::Nature;
+use rng_core::models::KeyPresses;
+use rng_core::result_base::ResultBase;
 
-static GOOD_DATES: &[&[u32]] =&[
+static GOOD_DATES: &[&[u32]] = &[
     &[], // 0月 存在しないため空白
-    &[1,2,6,7,8,9,10,14,15,16,17,18,19,22,23,24,25,26,30,31], // 1月
+    &[
+        1, 2, 6, 7, 8, 9, 10, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 30, 31,
+    ], // 1月
     &[], // 2月
-    &[1,2,3,6,7,8,9,10,11,14,15,16,17,18,19,22,23,24,25,26,27,30,31], // 3月
-    &[6,7,8,12,15,16,17,23,24,26,27,29], // 4月
-    &[1,2,6,7,8,9,10,14,15,16,17,18,19,22,23,24,25,26,30,31], // 5月
+    &[
+        1, 2, 3, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, 30, 31,
+    ], // 3月
+    &[6, 7, 8, 12, 15, 16, 17, 23, 24, 26, 27, 29], // 4月
+    &[
+        1, 2, 6, 7, 8, 9, 10, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 30, 31,
+    ], // 5月
     &[], // 6月
-    &[1,2,3,6,7,8,9,10,11,14,15,16,17,18,19,22,23,24,25,26,27,30,31], // 7月
-    &[4,6,7,12,13,15,16,17,20,23,24,26,27,29], // 8月
-    &[1,2,6,7,8,9,10,14,15,16,17,18,19,22,23,24,25,26,30], // 9月
+    &[
+        1, 2, 3, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, 30, 31,
+    ], // 7月
+    &[4, 6, 7, 12, 13, 15, 16, 17, 20, 23, 24, 26, 27, 29], // 8月
+    &[
+        1, 2, 6, 7, 8, 9, 10, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 30,
+    ], // 9月
     &[], // 10月
-    &[1,2,3,6,7,8,9,10,11,14,15,16,17,18,19,22,23,24,25,26,27,30], // 11月
-    &[4,6,7,10,12,13,15,16,17,19,20,23,24,26,27,29] // 12月
+    &[
+        1, 2, 3, 6, 7, 8, 9, 10, 11, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 27, 30,
+    ], // 11月
+    &[4, 6, 7, 10, 12, 13, 15, 16, 17, 19, 20, 23, 24, 26, 27, 29], // 12月
 ];
 
 #[derive(Debug, Clone)]
@@ -43,8 +54,10 @@ pub struct DrilburSearchResult {
 
 const BATCH_DATES: usize = 256;
 
-pub async fn drilbur_search(ds_config: rng_core::models::DSConfig, workgroup_size: WorkgroupSize )
-    -> Vec<DrilburSearchResult> {
+pub async fn drilbur_search(
+    ds_config: rng_core::models::DSConfig,
+    workgroup_size: WorkgroupSize,
+) -> Vec<DrilburSearchResult> {
     let batch_size = BATCH_DATES;
     let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
@@ -53,16 +66,8 @@ pub async fn drilbur_search(ds_config: rng_core::models::DSConfig, workgroup_siz
     let iv_min: [u32; 6] = [31, 31, 31, 7, 31, 31];
     let iv_max: [u32; 6] = [31, 31, 31, 31, 31, 31];
 
-    let params = GpuInputParams::new(
-        ds_config,
-        [0, 23],
-        [0, 59],
-        [5, 6],
-        2,
-        iv_min,
-        iv_max,
-    );
-    
+    let params = GpuInputParams::new(ds_config, [0, 23], [0, 59], [5, 6], 2, iv_min, iv_max);
+
     let mut dates = Vec::with_capacity(batch_size);
     for year in 0..=99u8 {
         for month in 1..=12u8 {
@@ -70,7 +75,11 @@ pub async fn drilbur_search(ds_config: rng_core::models::DSConfig, workgroup_siz
                 continue; // 夏月は対象外
             }
             for day in GOOD_DATES[month as usize] {
-                dates.push(rng_core::models::game_date::GameDate { year, month, day: *day as u8 });
+                dates.push(rng_core::models::game_date::GameDate {
+                    year,
+                    month,
+                    day: *day as u8,
+                });
                 if dates.len() >= batch_size {
                     collect_gpu_results(
                         &ctx,
@@ -80,7 +89,8 @@ pub async fn drilbur_search(ds_config: rng_core::models::DSConfig, workgroup_siz
                         &mut results,
                         &mut seen_seed0,
                         batch_size,
-                    ).await;
+                    )
+                    .await;
                     dates.clear();
                 }
             }
@@ -96,7 +106,8 @@ pub async fn drilbur_search(ds_config: rng_core::models::DSConfig, workgroup_siz
             &mut results,
             &mut seen_seed0,
             batch_size,
-        ).await;
+        )
+        .await;
     }
 
     results
@@ -111,21 +122,14 @@ async fn collect_gpu_results(
     seen_seed0: &mut std::collections::HashSet<u64>,
     batch_size: usize,
 ) {
-    let base_results = match run_result_base_seedhigh_by_dates(
-        ctx,
-        ds_config,
-        params,
-        dates,
-        batch_size
-    )
-    .await
-    {
-        Ok(res) => res,
-        Err(e) => {
-            eprintln!("Error running GPU search: {:?}", e);
-            return;
-        }
-    };
+    let base_results =
+        match run_result_base_seedhigh_by_dates(ctx, ds_config, params, dates, batch_size).await {
+            Ok(res) => res,
+            Err(e) => {
+                eprintln!("Error running GPU search: {:?}", e);
+                return;
+            }
+        };
 
     for base in base_results.into_iter() {
         let ResultBase {
@@ -140,26 +144,19 @@ async fn collect_gpu_results(
             continue; // Skip if seed0 has already been seen
         }
 
-        let cloud_advances =
-            find_cloud_exists_advances(
-                seed0,
-                24,
-                40,
-                OffsetType::BW2Continue,
-            );
+        let cloud_advances = find_cloud_exists_advances(seed0, 24, 40, OffsetType::BW2Continue);
 
         if cloud_advances.is_empty() {
             continue; // Skip if no valid cloud advances found
         }
 
-        let wild_advances =
-            find_cloud_poke_advances(
-                seed0,
-                cloud_advances[0] + 4,
-                cloud_advances[cloud_advances.len() - 1] + 60,
-                &is_target_drilbur,
-                OffsetType::BW2Continue,
-            );
+        let wild_advances = find_cloud_poke_advances(
+            seed0,
+            cloud_advances[0] + 4,
+            cloud_advances[cloud_advances.len() - 1] + 60,
+            &is_target_drilbur,
+            OffsetType::BW2Continue,
+        );
 
         if wild_advances.is_empty() {
             continue; // Skip if no valid wild advances found
@@ -193,29 +190,32 @@ fn is_target_drilbur(poke: &rng_core::lcg::wild_poke::WildPoke) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use rng_core::{
+        gpu::workgroup_size::WorkgroupSize::W256,
+        models::{DSConfig, GameVersion},
+    };
     use std::time::Instant;
-    use rng_core::{gpu::workgroup_size::WorkgroupSize::W256, models::{DSConfig, GameVersion}};
 
-use super::*;
+    use super::*;
 
     #[test]
     fn test_drilbur_search() {
         let ds_config = DSConfig {
-            version : GameVersion::White2,
-            region : rng_core::models::Region::JPN,
-            timer0 : 0x10FA,
-            is_dslite : false,
-            mac_address : 0x9bf6d93ce,
+            version: GameVersion::White2,
+            region: rng_core::models::Region::JPN,
+            timer0: 0x10FA,
+            is_dslite: false,
+            mac_address: 0x9bf6d93ce,
         };
 
         let start = Instant::now();
-        let results = pollster::block_on(async {
-            drilbur_search(ds_config, W256).await
-        });
+        let results = pollster::block_on(async { drilbur_search(ds_config, W256).await });
         let elapsed = start.elapsed();
         println!("Elapsed: {:?}", elapsed);
         println!("Total results: {}", results.len());
-        println!("seed0, seed1, year, month, day, hour, minute, second, key_presses, h, a, b, c, d, s, clouds, advances");
+        println!(
+            "seed0, seed1, year, month, day, hour, minute, second, key_presses, h, a, b, c, d, s, clouds, advances"
+        );
         for r in results.iter() {
             println!(
                 "{:016X}, {:016X}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
@@ -234,8 +234,16 @@ use super::*;
                 r.ivs[3],
                 r.ivs[4],
                 r.ivs[5],
-                r.cloud_advances.iter().map(|a| a.to_string()).collect::<Vec<_>>().join("|"),
-                r.wild_advances.iter().map(|a| a.to_string()).collect::<Vec<_>>().join("|"),
+                r.cloud_advances
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>()
+                    .join("|"),
+                r.wild_advances
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>()
+                    .join("|"),
             );
         }
     }

@@ -1,12 +1,12 @@
-use rng_core::mt::mt_0;
-use rng_core::models::key_presses::KeyPresses;
-use rng_core::models::game_time_iterator;
-use rng_core::models::ds_config::DSConfig;
-use rng_core::models::GameTime;
-use rng_core::models::FieldRange;
 use rng_core::lcg::Lcg;
-use rng_core::lcg::nature::Nature;
 use rng_core::lcg::OffsetType::Bw1Start;
+use rng_core::lcg::nature::Nature;
+use rng_core::models::FieldRange;
+use rng_core::models::GameTime;
+use rng_core::models::ds_config::DSConfig;
+use rng_core::models::game_time_iterator;
+use rng_core::models::key_presses::KeyPresses;
+use rng_core::mt::mt_0;
 
 #[derive(Debug, Clone)]
 pub struct SnivySearchResult {
@@ -21,25 +21,53 @@ pub struct SnivySearchResult {
 
 pub fn search_snivy(
     ds_config: DSConfig,
-    GameTime { hour, minute, second, year, month, day }: GameTime,
+    GameTime {
+        hour,
+        minute,
+        second,
+        year,
+        month,
+        day,
+    }: GameTime,
 ) -> Vec<SnivySearchResult> {
     let mut results: Vec<SnivySearchResult> = Vec::new();
 
     let spec = rng_core::models::GameTimeSpec {
-        year: FieldRange { min: year, max: year },
-        month: FieldRange { min: month, max: month },
+        year: FieldRange {
+            min: year,
+            max: year,
+        },
+        month: FieldRange {
+            min: month,
+            max: month,
+        },
         day: FieldRange { min: day, max: day },
-        hour: FieldRange { min: hour, max: hour },
-        minute: FieldRange { min: minute, max: minute },
-        second: FieldRange { min: second, max: second },
+        hour: FieldRange {
+            min: hour,
+            max: hour,
+        },
+        minute: FieldRange {
+            min: minute,
+            max: minute,
+        },
+        second: FieldRange {
+            min: second,
+            max: second,
+        },
     };
 
     let time_iter = game_time_iterator::GameTimeIterator::new(spec);
     let valid_key_presses: Vec<_> = KeyPresses::iter_valid().collect();
-    
-    let inner = time_iter.flat_map(|game_time| {
-        valid_key_presses.clone().into_iter().map(move |key_presses| (game_time, key_presses))
-    }).collect::<Vec<_>>().into_iter();
+
+    let inner = time_iter
+        .flat_map(|game_time| {
+            valid_key_presses
+                .clone()
+                .into_iter()
+                .map(move |key_presses| (game_time, key_presses))
+        })
+        .collect::<Vec<_>>()
+        .into_iter();
 
     let mut seed_iter = rng_core::initial_seed::SeedIter {
         config: &ds_config,
@@ -83,10 +111,10 @@ pub fn search_snivy(
 
 #[cfg(test)]
 mod tests {
-    use rng_core::models::Region;
     use rng_core::models::GameVersion::Black;
+    use rng_core::models::Region;
 
-use super::*;
+    use super::*;
 
     #[test]
     #[ignore]
@@ -109,7 +137,9 @@ use super::*;
         };
 
         let results = search_snivy(ds_config, game_time);
-        println!("seed0, seed1, hour, minute, second, keypresses, H, A, B, C, D, S, nature, advances");
+        println!(
+            "seed0, seed1, hour, minute, second, keypresses, H, A, B, C, D, S, nature, advances"
+        );
         for r in results {
             println!(
                 "{:016X},{:016X},{:02},{:02},{:02},{:?},{},{},{},{},{},{},{},{:?}",

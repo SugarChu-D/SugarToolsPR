@@ -28,7 +28,6 @@ pub struct GpuIvConfig {
     pub iv_max: [u32; 6],
 }
 
-
 #[cfg(test)]
 impl GpuInput {
     pub fn test_new(
@@ -59,19 +58,24 @@ impl GpuInput {
             iv_max,
         }
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::game_date_iterator::GameDateSpec;
     use crate::models::field_range::FieldRange;
+    use crate::models::game_date_iterator::GameDateSpec;
     use crate::models::game_version::GameVersion;
 
     #[test]
     fn test_gpu_input_iterator_next_batch() {
-        let ds_config = DSConfig::new(GameVersion::White2, crate::models::Region::JPN, 0x10F7, false, 0x0009bf6d93ce);
+        let ds_config = DSConfig::new(
+            GameVersion::White2,
+            crate::models::Region::JPN,
+            0x10F7,
+            false,
+            0x0009bf6d93ce,
+        );
         let datespec = GameDateSpec {
             year: FieldRange { min: 33, max: 33 },
             month: FieldRange { min: 8, max: 8 },
@@ -132,9 +136,14 @@ impl Iterator for GPUInputIterator {
                 self.ds_config.get_version_config().nazo_values.nazo4,
                 self.ds_config.get_version_config().nazo_values.nazo5,
             ],
-            vcount_timer0_as_data5: (self.ds_config.get_version_config().vcount << 16) | (self.ds_config.timer0 as u32),
+            vcount_timer0_as_data5: (self.ds_config.get_version_config().vcount << 16)
+                | (self.ds_config.timer0 as u32),
             mac: self.ds_config.mac_address,
-            gxframe_xor_frame: if self.ds_config.is_dslite { 0x0600_0006} else {0x0600_0008},
+            gxframe_xor_frame: if self.ds_config.is_dslite {
+                0x0600_0006
+            } else {
+                0x0600_0008
+            },
             date_as_data8: self.current_date.get_date8_format(),
             hour_range: self.hour_range,
             minute_range: self.minute_range,

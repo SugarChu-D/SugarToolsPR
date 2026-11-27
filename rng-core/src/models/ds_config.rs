@@ -1,4 +1,7 @@
-use crate::models::{VersionConfig, game_version::{GameVersion, Region}};
+use crate::models::{
+    VersionConfig,
+    game_version::{GameVersion, Region},
+};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 
@@ -7,7 +10,8 @@ fn parse_hex_or_decimal_u64(s: &str) -> Result<u64, String> {
     if s.starts_with("0x") || s.starts_with("0X") {
         u64::from_str_radix(&s[2..], 16).map_err(|e| format!("invalid hex: {}", e))
     } else {
-        s.parse::<u64>().map_err(|e| format!("invalid number: {}", e))
+        s.parse::<u64>()
+            .map_err(|e| format!("invalid number: {}", e))
     }
 }
 
@@ -60,10 +64,12 @@ where
     if v <= u16::MAX as u64 {
         Ok(v as u16)
     } else {
-        Err(serde::de::Error::custom(format!("value {} out of range for u16", v)))
+        Err(serde::de::Error::custom(format!(
+            "value {} out of range for u16",
+            v
+        )))
     }
 }
-
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct DSConfig {
@@ -80,7 +86,13 @@ pub struct DSConfig {
 }
 
 impl DSConfig {
-    pub fn new(version: GameVersion, region: Region, timer0: u16, is_dslite: bool, mac: u64) -> Self {
+    pub fn new(
+        version: GameVersion,
+        region: Region,
+        timer0: u16,
+        is_dslite: bool,
+        mac: u64,
+    ) -> Self {
         Self {
             version,
             region,
@@ -90,7 +102,7 @@ impl DSConfig {
         }
     }
 
-    pub fn get_version_config(&self) -> VersionConfig{
+    pub fn get_version_config(&self) -> VersionConfig {
         VersionConfig::from_version(self.version, self.region)
     }
 }
@@ -102,7 +114,8 @@ mod tests {
 
     #[test]
     fn test_deserialize_hex_mac_and_timer() {
-        let j = r#"{ "version": "Black", "timer0": "0x1F", "is_dslite": false, "mac": "0x1234abcd" }"#;
+        let j =
+            r#"{ "version": "Black", "timer0": "0x1F", "is_dslite": false, "mac": "0x1234abcd" }"#;
         let cfg: DSConfig = serde_json::from_str(j).expect("parse hex fields");
         assert_eq!(cfg.timer0, 0x1F);
         assert_eq!(cfg.mac_address, 0x1234ABCDu64);
@@ -117,7 +130,13 @@ mod tests {
 
     #[test]
     fn test_dsconfig_new_and_fields() {
-        let cfg = DSConfig::new(GameVersion::Black, Region::JPN,0x10FA, true, 0x1234_ABCDu64);
+        let cfg = DSConfig::new(
+            GameVersion::Black,
+            Region::JPN,
+            0x10FA,
+            true,
+            0x1234_ABCDu64,
+        );
         assert_eq!(cfg.version, GameVersion::Black);
         assert_eq!(cfg.region, Region::JPN);
         assert_eq!(cfg.timer0, 0x10FA);
@@ -127,7 +146,13 @@ mod tests {
 
     #[test]
     fn test_serde_roundtrip() {
-        let cfg = DSConfig::new(GameVersion::White2, Region::JPN, 0x10FA, false, 0xDEAD_BEEFu64);
+        let cfg = DSConfig::new(
+            GameVersion::White2,
+            Region::JPN,
+            0x10FA,
+            false,
+            0xDEAD_BEEFu64,
+        );
         let s = serde_json::to_string(&cfg).expect("serialize");
         let de: DSConfig = serde_json::from_str(&s).expect("deserialize");
         assert_eq!(de.mac_address, cfg.mac_address);

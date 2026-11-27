@@ -1,5 +1,5 @@
-use super::game_date::GameDate;
 use super::field_range::FieldRange;
+use super::game_date::GameDate;
 
 #[derive(Debug, Clone, Copy)]
 pub struct GameDateSpec {

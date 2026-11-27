@@ -2,10 +2,10 @@ use super::Lcg;
 
 const PROBABILITY_TABLE: [[u8; 5]; 6] = [
     [50, 100, 100, 100, 100],
-    [50,  50, 100, 100, 100],
-    [30,  50, 100, 100, 100],
-    [25,  30,  50, 100, 100],
-    [20,  25,  33,  50, 100],
+    [50, 50, 100, 100, 100],
+    [30, 50, 100, 100, 100],
+    [25, 30, 50, 100, 100],
+    [20, 25, 33, 50, 100],
     [100, 100, 100, 100, 100],
 ];
 
@@ -24,7 +24,7 @@ impl Lcg {
         self.next();
         self.offset_seed1(offset_type)
     }
-    
+
     pub fn offset_seed1(&mut self, offset_type: OffsetType) -> u64 {
         match offset_type {
             // BW1はじめから
@@ -32,11 +32,11 @@ impl Lcg {
                 self.pt(3);
                 self.advance(3);
                 // 以降はTID,SID
-            },
+            }
             // BW1続きから
             OffsetType::Bw1Continue => {
                 self.pt(5);
-            },
+            }
             // BW2はじめから
             OffsetType::BW2Start => {
                 self.pt(1);
@@ -48,7 +48,7 @@ impl Lcg {
                 // チラチーノ用pid
                 self.next();
                 // 以降はTID,SID
-            },
+            }
             OffsetType::BW2StartChallengeMode => {
                 self.pt(1);
                 self.advance(1);
@@ -63,16 +63,16 @@ impl Lcg {
                 self.advance(3);
                 self.pt(4);
                 self.offset_extra();
-            },
+            }
             // BW2続きから(おもいでリンクあり)
             OffsetType::BW2ContinueWithLink => {
                 self.pt(1);
                 self.advance(2);
                 self.pt(4);
                 self.offset_extra();
-            },
+            }
         }
-        
+
         self.step
     }
 
@@ -95,7 +95,7 @@ impl Lcg {
 
     // BW2特有の追加オフセット処理
     pub fn offset_extra(&mut self) {
-        loop{
+        loop {
             let r1: u32 = (((self.next() >> 32) * 15) >> 32) as u32;
             let r2: u32 = (((self.next() >> 32) * 15) >> 32) as u32;
             let r3: u32 = (((self.next() >> 32) * 15) >> 32) as u32;

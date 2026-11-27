@@ -15,21 +15,23 @@ impl<'a> PipelineFactory<'a> {
         layout: &wgpu::BindGroupLayout,
         entry: &str,
     ) -> wgpu::ComputePipeline {
-        let pipeline_layout =
-            self.device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: None,
                 bind_group_layouts: &[layout],
                 immediate_size: 0,
             });
 
-        self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: None,
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point: Some(entry),
-            compilation_options: Default::default(),
-            cache: None,
-        })
+        self.device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: None,
+                layout: Some(&pipeline_layout),
+                module: shader,
+                entry_point: Some(entry),
+                compilation_options: Default::default(),
+                cache: None,
+            })
     }
 
     /// Builds a pipeline using the WGSL `WORKGROUP_SIZE` override constant.
@@ -40,24 +42,26 @@ impl<'a> PipelineFactory<'a> {
         entry: &str,
         workgroup_size: u32,
     ) -> wgpu::ComputePipeline {
-        let pipeline_layout =
-            self.device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&PipelineLayoutDescriptor {
                 label: None,
                 bind_group_layouts: &[layout],
                 immediate_size: 0,
             });
 
-        self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: None,
-            layout: Some(&pipeline_layout),
-            module: shader,
-            entry_point: Some(entry),
-            compilation_options: wgpu::PipelineCompilationOptions {
-                constants: &[("WORKGROUP_SIZE", workgroup_size as f64)],
-                ..Default::default()
-            },
-            cache: None,
-        })
+        self.device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: None,
+                layout: Some(&pipeline_layout),
+                module: shader,
+                entry_point: Some(entry),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: &[("WORKGROUP_SIZE", workgroup_size as f64)],
+                    ..Default::default()
+                },
+                cache: None,
+            })
     }
 }
 
@@ -78,10 +82,12 @@ mod tests {
                     "override WORKGROUP_SIZE: u32 = 256u;\n@compute @workgroup_size(WORKGROUP_SIZE) fn main() {}",
                 )),
             });
-            let layout = ctx.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: None,
-                entries: &[],
-            });
+            let layout = ctx
+                .device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: None,
+                    entries: &[],
+                });
 
             let _pipeline = PipelineFactory::new(&ctx.device).create_compute_with_workgroup_size(
                 &shader,

@@ -6,12 +6,15 @@ use infra::gpu::readback::Readback;
 use infra::gpu::shader_loader::ShaderLoader;
 use wgpu::util::DeviceExt;
 
-use crate::gpu::bind_layout::{input_output_layout, input_output_counter_params_layout, input_list_output_counter_params_layout};
-use crate::gpu::input_layout::{GpuInput, GpuIvConfig, GPUInputIterator};
+use crate::gpu::bind_layout::{
+    input_list_output_counter_params_layout, input_output_counter_params_layout,
+    input_output_layout,
+};
+use crate::gpu::input_layout::{GPUInputIterator, GpuInput, GpuIvConfig};
+use crate::gpu::mt_kernel;
 use crate::gpu::staging_layout::GpuCandidate;
 use crate::models::game_date_iterator::GameDateSpec;
 use crate::models::{DSConfig, KeyPresses};
-use crate::gpu::mt_kernel;
 
 const SHA1_SHADER: &str = concat!(
     include_str!("wgsl/common_types.wgsl"),
@@ -55,7 +58,6 @@ pub async fn run_sha1(
     ctx: &infra::gpu::context::GpuContext,
     input: &[GpuInput],
 ) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
-
     if input.is_empty() {
         return Ok(Vec::new());
     }
@@ -63,16 +65,26 @@ pub async fn run_sha1(
     let first = &input[0];
     if first.hour_range[1] < first.hour_range[0]
         || first.minute_range[1] < first.minute_range[0]
-        || first.second_range[1] < first.second_range[0] {
+        || first.second_range[1] < first.second_range[0]
+    {
         return Ok(Vec::new());
     }
 
     #[cfg(debug_assertions)]
     {
         for other in input.iter().skip(1) {
-            assert_eq!(other.hour_range, first.hour_range, "hour_range must match across inputs");
-            assert_eq!(other.minute_range, first.minute_range, "minute_range must match across inputs");
-            assert_eq!(other.second_range, first.second_range, "second_range must match across inputs");
+            assert_eq!(
+                other.hour_range, first.hour_range,
+                "hour_range must match across inputs"
+            );
+            assert_eq!(
+                other.minute_range, first.minute_range,
+                "minute_range must match across inputs"
+            );
+            assert_eq!(
+                other.second_range, first.second_range,
+                "second_range must match across inputs"
+            );
         }
     }
 
@@ -81,9 +93,7 @@ pub async fn run_sha1(
     let m_count = (first.minute_range[1] - first.minute_range[0] + 1) as usize;
     let s_count = (first.second_range[1] - first.second_range[0] + 1) as usize;
     let time_count = h_count * m_count * s_count;
-    let output_len_u64 = (kp_count as u64)
-        * (time_count as u64)
-        * (input.len() as u64);
+    let output_len_u64 = (kp_count as u64) * (time_count as u64) * (input.len() as u64);
     if output_len_u64 == 0 {
         return Ok(Vec::new());
     }
@@ -92,15 +102,15 @@ pub async fn run_sha1(
     }
     let output_len = output_len_u64 as usize;
 
-    let shader = ShaderLoader::from_wgsl(
-        &ctx.device,
-        Some("rng_core_sha1_expand"),
-        SHA1_SHADER,
-    );
+    let shader = ShaderLoader::from_wgsl(&ctx.device, Some("rng_core_sha1_expand"), SHA1_SHADER);
 
     let pool = BufferPool::new(&ctx.device);
     let input_buffer = pool
-        .create_init(input, BufferKind::Input, "rng_core_sha1_expand_input_buffer")
+        .create_init(
+            input,
+            BufferKind::Input,
+            "rng_core_sha1_expand_input_buffer",
+        )
         .buffer;
 
     let layout = input_output_layout(&ctx.device);
@@ -129,7 +139,11 @@ pub async fn run_sha1(
         let chunk_len = (output_len - base).min(max_elems);
         let output_bytes = (chunk_len * std::mem::size_of::<GpuCandidate>()) as u64;
         let output_buffer = pool
-            .create::<GpuCandidate>(output_bytes as usize, BufferKind::Output, "rng_core_sha1_expand_output_buffer")
+            .create::<GpuCandidate>(
+                output_bytes as usize,
+                BufferKind::Output,
+                "rng_core_sha1_expand_output_buffer",
+            )
             .buffer;
 
         let params = DispatchParams {
@@ -137,7 +151,11 @@ pub async fn run_sha1(
             total_len: output_len_u64,
         };
         let params_buffer = pool
-            .create_init(std::slice::from_ref(&params), BufferKind::Input, "rng_core_sha1_expand_params_buffer")
+            .create_init(
+                std::slice::from_ref(&params),
+                BufferKind::Input,
+                "rng_core_sha1_expand_params_buffer",
+            )
             .buffer;
 
         let bind_group = BindGroupBuilder::new(&layout)
@@ -146,9 +164,11 @@ pub async fn run_sha1(
             .buffer(2, &params_buffer)
             .build(&ctx.device, Some("rng_core_sha1_expand_bind_group"));
 
-        let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("rng_core_sha1_expand_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("rng_core_sha1_expand_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("rng_core_sha1_expand_pass"),
@@ -190,19 +210,38 @@ pub async fn run_sha1_mt(
     let first = &input[0];
     if first.hour_range[1] < first.hour_range[0]
         || first.minute_range[1] < first.minute_range[0]
-        || first.second_range[1] < first.second_range[0] {
+        || first.second_range[1] < first.second_range[0]
+    {
         return Ok(Vec::new());
     }
 
     #[cfg(debug_assertions)]
     {
         for other in input.iter().skip(1) {
-            assert_eq!(other.hour_range, first.hour_range, "hour_range must match across inputs");
-            assert_eq!(other.minute_range, first.minute_range, "minute_range must match across inputs");
-            assert_eq!(other.second_range, first.second_range, "second_range must match across inputs");
-            assert_eq!(other.iv_step, first.iv_step, "iv_step must match across inputs");
-            assert_eq!(other.iv_min, first.iv_min, "iv_min must match across inputs");
-            assert_eq!(other.iv_max, first.iv_max, "iv_max must match across inputs");
+            assert_eq!(
+                other.hour_range, first.hour_range,
+                "hour_range must match across inputs"
+            );
+            assert_eq!(
+                other.minute_range, first.minute_range,
+                "minute_range must match across inputs"
+            );
+            assert_eq!(
+                other.second_range, first.second_range,
+                "second_range must match across inputs"
+            );
+            assert_eq!(
+                other.iv_step, first.iv_step,
+                "iv_step must match across inputs"
+            );
+            assert_eq!(
+                other.iv_min, first.iv_min,
+                "iv_min must match across inputs"
+            );
+            assert_eq!(
+                other.iv_max, first.iv_max,
+                "iv_max must match across inputs"
+            );
         }
     }
 
@@ -211,18 +250,12 @@ pub async fn run_sha1_mt(
     let m_count = (first.minute_range[1] - first.minute_range[0] + 1) as usize;
     let s_count = (first.second_range[1] - first.second_range[0] + 1) as usize;
     let time_count = h_count * m_count * s_count;
-    let output_len_u64 = (kp_count as u64)
-        * (time_count as u64)
-        * (input.len() as u64);
+    let output_len_u64 = (kp_count as u64) * (time_count as u64) * (input.len() as u64);
     if output_len_u64 == 0 {
         return Ok(Vec::new());
     }
 
-    let shader = ShaderLoader::from_wgsl(
-        &ctx.device,
-        Some("rng_core_sha1_mt"),
-        SHA1_MT_SHADER,
-    );
+    let shader = ShaderLoader::from_wgsl(&ctx.device, Some("rng_core_sha1_mt"), SHA1_MT_SHADER);
 
     let pool = BufferPool::new(&ctx.device);
     let input_buffer = pool
@@ -254,21 +287,33 @@ pub async fn run_sha1_mt(
 
         let output_bytes = (MAX_RESULTS * std::mem::size_of::<GpuCandidate>()) as u64;
         let output_buffer = pool
-            .create::<GpuCandidate>(output_bytes as usize, BufferKind::Output, "rng_core_sha1_mt_output_buffer")
+            .create::<GpuCandidate>(
+                output_bytes as usize,
+                BufferKind::Output,
+                "rng_core_sha1_mt_output_buffer",
+            )
             .buffer;
 
-        let counter_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("rng_core_sha1_mt_counter_buffer"),
-            contents: bytemuck::bytes_of(&0u32),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        });
+        let counter_buffer = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("rng_core_sha1_mt_counter_buffer"),
+                contents: bytemuck::bytes_of(&0u32),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            });
 
         let params = DispatchParams {
             base_index: base,
             total_len: output_len_u64,
         };
         let params_buffer = pool
-            .create_init(std::slice::from_ref(&params), BufferKind::Input, "rng_core_sha1_mt_params_buffer")
+            .create_init(
+                std::slice::from_ref(&params),
+                BufferKind::Input,
+                "rng_core_sha1_mt_params_buffer",
+            )
             .buffer;
 
         let bind_group = BindGroupBuilder::new(&layout)
@@ -278,9 +323,11 @@ pub async fn run_sha1_mt(
             .buffer(3, &params_buffer)
             .build(&ctx.device, Some("rng_core_sha1_mt_bind_group"));
 
-        let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("rng_core_sha1_mt_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("rng_core_sha1_mt_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("rng_core_sha1_mt_pass"),
@@ -328,9 +375,7 @@ pub async fn run_sha1_seedhigh_filter(
     input: &[GpuInput],
     seed_high_list: &[u32],
 ) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
-    let keypress_list: Vec<u32> = KeyPresses::iter_valid()
-        .map(|k| k.raw() as u32)
-        .collect();
+    let keypress_list: Vec<u32> = KeyPresses::iter_valid().map(|k| k.raw() as u32).collect();
     let keypress_count = keypress_list.len() as u32;
     if keypress_count == 0 {
         return Ok(Vec::new());
@@ -346,16 +391,26 @@ pub async fn run_sha1_seedhigh_filter(
     let first = &input[0];
     if first.hour_range[1] < first.hour_range[0]
         || first.minute_range[1] < first.minute_range[0]
-        || first.second_range[1] < first.second_range[0] {
+        || first.second_range[1] < first.second_range[0]
+    {
         return Ok(Vec::new());
     }
 
     #[cfg(debug_assertions)]
     {
         for other in input.iter().skip(1) {
-            assert_eq!(other.hour_range, first.hour_range, "hour_range must match across inputs");
-            assert_eq!(other.minute_range, first.minute_range, "minute_range must match across inputs");
-            assert_eq!(other.second_range, first.second_range, "second_range must match across inputs");
+            assert_eq!(
+                other.hour_range, first.hour_range,
+                "hour_range must match across inputs"
+            );
+            assert_eq!(
+                other.minute_range, first.minute_range,
+                "minute_range must match across inputs"
+            );
+            assert_eq!(
+                other.second_range, first.second_range,
+                "second_range must match across inputs"
+            );
         }
     }
 
@@ -371,9 +426,7 @@ pub async fn run_sha1_seedhigh_filter(
     let m_count = (first.minute_range[1] - first.minute_range[0] + 1) as usize;
     let s_count = (first.second_range[1] - first.second_range[0] + 1) as usize;
     let time_count = h_count * m_count * s_count;
-    let output_len_u64 = (kp_count as u64)
-        * (time_count as u64)
-        * (input.len() as u64);
+    let output_len_u64 = (kp_count as u64) * (time_count as u64) * (input.len() as u64);
     if output_len_u64 == 0 {
         return Ok(Vec::new());
     }
@@ -386,13 +439,25 @@ pub async fn run_sha1_seedhigh_filter(
 
     let pool = BufferPool::new(&ctx.device);
     let input_buffer = pool
-        .create_init(input, BufferKind::Input, "rng_core_sha1_seedhigh_input_buffer")
+        .create_init(
+            input,
+            BufferKind::Input,
+            "rng_core_sha1_seedhigh_input_buffer",
+        )
         .buffer;
     let list_buffer = pool
-        .create_init(&list, BufferKind::Input, "rng_core_sha1_seedhigh_list_buffer")
+        .create_init(
+            &list,
+            BufferKind::Input,
+            "rng_core_sha1_seedhigh_list_buffer",
+        )
         .buffer;
     let keypress_buffer = pool
-        .create_init(&keypress_list, BufferKind::Input, "rng_core_sha1_seedhigh_keypress_buffer")
+        .create_init(
+            &keypress_list,
+            BufferKind::Input,
+            "rng_core_sha1_seedhigh_keypress_buffer",
+        )
         .buffer;
 
     let layout = input_list_output_counter_params_layout(&ctx.device);
@@ -407,17 +472,29 @@ pub async fn run_sha1_seedhigh_filter(
 
     let output_bytes = (MAX_RESULTS * std::mem::size_of::<GpuCandidate>()) as u64;
     let output_buffer = pool
-        .create::<GpuCandidate>(output_bytes as usize, BufferKind::Output, "rng_core_sha1_seedhigh_output_buffer")
+        .create::<GpuCandidate>(
+            output_bytes as usize,
+            BufferKind::Output,
+            "rng_core_sha1_seedhigh_output_buffer",
+        )
         .buffer;
 
-    let counter_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("rng_core_sha1_seedhigh_counter_buffer"),
-        contents: bytemuck::bytes_of(&0u32),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-    });
+    let counter_buffer = ctx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("rng_core_sha1_seedhigh_counter_buffer"),
+            contents: bytemuck::bytes_of(&0u32),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+        });
 
     let params_buffer = pool
-        .create::<ListDispatchParams>(std::mem::size_of::<ListDispatchParams>(), BufferKind::Input, "rng_core_sha1_seedhigh_params_buffer")
+        .create::<ListDispatchParams>(
+            std::mem::size_of::<ListDispatchParams>(),
+            BufferKind::Input,
+            "rng_core_sha1_seedhigh_params_buffer",
+        )
         .buffer;
 
     let bind_group = BindGroupBuilder::new(&layout)
@@ -446,11 +523,14 @@ pub async fn run_sha1_seedhigh_filter(
             list_len: list.len() as u32,
             keypress_len: keypress_count,
         };
-        ctx.queue.write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
+        ctx.queue
+            .write_buffer(&params_buffer, 0, bytemuck::bytes_of(&params));
 
-        let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("rng_core_sha1_seedhigh_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("rng_core_sha1_seedhigh_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("rng_core_sha1_seedhigh_pass"),
@@ -551,11 +631,11 @@ pub async fn run_sha1_seedhigh_search(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{DSConfig, GameVersion};
     use crate::gpu::input_layout::GpuIvConfig;
     use crate::gpu::mt_kernel;
     use crate::models::field_range::FieldRange;
     use crate::models::game_date_iterator::GameDateSpec;
+    use crate::models::{DSConfig, GameVersion};
     use infra::gpu::context::GpuContext;
 
     #[test]
@@ -565,27 +645,34 @@ mod tests {
             let ctx = GpuContext::new().await;
             let start = std::time::Instant::now();
 
-            let ds_config = DSConfig::new(GameVersion::White2, crate::models::Region::JPN, 0x10F7, false, 0x0009bf6d93ce);
-            
+            let ds_config = DSConfig::new(
+                GameVersion::White2,
+                crate::models::Region::JPN,
+                0x10F7,
+                false,
+                0x0009bf6d93ce,
+            );
+
             let p = 2u32;
             let iv_min: [u32; 6] = [31u32, 31u32, 31u32, 8, 31u32, 31u32];
             let iv_max: [u32; 6] = [31u32, 31u32, 31u32, 8, 31u32, 31u32];
-            
+
             let inputs = [GpuInput {
                 nazo: [
-                ds_config.get_version_config().nazo_values.nazo1,
-                ds_config.get_version_config().nazo_values.nazo2,
-                ds_config.get_version_config().nazo_values.nazo3,
-                ds_config.get_version_config().nazo_values.nazo4,
-                ds_config.get_version_config().nazo_values.nazo5,
-            ],
-                vcount_timer0_as_data5: (ds_config.get_version_config().vcount as u32) | (ds_config.timer0 as u32),
+                    ds_config.get_version_config().nazo_values.nazo1,
+                    ds_config.get_version_config().nazo_values.nazo2,
+                    ds_config.get_version_config().nazo_values.nazo3,
+                    ds_config.get_version_config().nazo_values.nazo4,
+                    ds_config.get_version_config().nazo_values.nazo5,
+                ],
+                vcount_timer0_as_data5: (ds_config.get_version_config().vcount as u32)
+                    | (ds_config.timer0 as u32),
                 mac: ds_config.mac_address,
                 gxframe_xor_frame: 0x600_0008,
                 date_as_data8: 0x33082706,
-                hour_range:[0,23],
-                minute_range: [0,59],
-                second_range: [5,5],
+                hour_range: [0, 23],
+                minute_range: [0, 59],
+                second_range: [5, 5],
                 _pad0: 0,
                 iv_step: 2,
                 iv_min,
@@ -624,9 +711,15 @@ mod tests {
     fn test_sha1_seedhigh_search_smoke() {
         pollster::block_on(async {
             let ctx = GpuContext::new().await;
-            let ds_config = DSConfig::new(GameVersion::White2,crate::models::Region::JPN, 0x10f7, false, 0x0009bf6d93ce);
+            let ds_config = DSConfig::new(
+                GameVersion::White2,
+                crate::models::Region::JPN,
+                0x10f7,
+                false,
+                0x0009bf6d93ce,
+            );
             let datespec = GameDateSpec {
-                year: FieldRange { min: 0, max:  99 },
+                year: FieldRange { min: 0, max: 99 },
                 month: FieldRange { min: 1, max: 12 },
                 day: FieldRange { min: 27, max: 27 },
             };

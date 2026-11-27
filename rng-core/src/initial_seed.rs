@@ -1,6 +1,6 @@
 use crate::lcg::lcg_next;
-use crate::sha_1::generate_initial_seed0;
 use crate::models::{DSConfig, GameTime, KeyPresses};
+use crate::sha_1::generate_initial_seed0;
 
 #[derive(Debug, Clone)]
 pub struct SeedResultBase {
@@ -11,14 +11,16 @@ pub struct SeedResultBase {
 }
 
 pub struct SeedIter<'a, I>
-where I:Iterator<Item = (GameTime, KeyPresses)>,
+where
+    I: Iterator<Item = (GameTime, KeyPresses)>,
 {
     pub config: &'a DSConfig,
     pub inner: I,
 }
 
 impl<'a, T> Iterator for SeedIter<'a, T>
-where T: Iterator<Item = (GameTime, KeyPresses)>,
+where
+    T: Iterator<Item = (GameTime, KeyPresses)>,
 {
     type Item = SeedResultBase;
 
@@ -28,7 +30,12 @@ where T: Iterator<Item = (GameTime, KeyPresses)>,
         let seed0 = generate_initial_seed0(self.config, &game_time, key_presses);
         let seed1 = lcg_next(seed0);
 
-        Some(SeedResultBase {seed0, seed1, game_time, key_presses })
+        Some(SeedResultBase {
+            seed0,
+            seed1,
+            game_time,
+            key_presses,
+        })
     }
 }
 
@@ -59,14 +66,9 @@ mod tests {
         let k2 = KeyPresses::new(0x2ffe);
 
         // --- inner iterator（直積を模倣）---
-        let inner = vec![
-            (t1, k1),
-            (t1, k2),
-            (t2, k1),
-            (t2, k2),
-        ].into_iter();
+        let inner = vec![(t1, k1), (t1, k2), (t2, k1), (t2, k2)].into_iter();
 
-        let mut iter: SeedIter<'_, std::vec::IntoIter<(GameTime, KeyPresses)>> = SeedIter{
+        let mut iter: SeedIter<'_, std::vec::IntoIter<(GameTime, KeyPresses)>> = SeedIter {
             config: &config,
             inner,
         };

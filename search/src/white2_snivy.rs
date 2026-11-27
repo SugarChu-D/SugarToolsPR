@@ -5,15 +5,15 @@ use infra::gpu::context::GpuContext;
 use rayon::prelude::*;
 use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates_multi_iv};
 use rng_core::gpu::input_layout::GpuIvConfig;
-use rng_core::lcg::{Lcg, OffsetType};
-use rng_core::lcg::grotto::Grottos;
-use rng_core::lcg::nature::Nature as Nature;
-use rng_core::lcg::wild_poke::WildPoke;
-use rng_core::models::DSConfig as DSConfig;
-use rng_core::models::game_date::{GameDate, build_autumn_and_winter};
 use rng_core::gpu::workgroup_size::WorkgroupSize;
+use rng_core::lcg::grotto::Grottos;
+use rng_core::lcg::nature::Nature;
+use rng_core::lcg::wild_poke::WildPoke;
+use rng_core::lcg::{Lcg, OffsetType};
+use rng_core::models::DSConfig;
+use rng_core::models::game_date::{GameDate, build_autumn_and_winter};
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct W2SnivySearchResult {
     pub seed0: u64,
     pub seed1: u64,
@@ -67,10 +67,20 @@ fn tepig_iv_check(ivs: [u8; 6]) -> bool {
 
 const BATCH_DATES: usize = 512;
 
-pub async fn white2_snivy_search(config: DSConfig, mode: BW2Mode, workgroup_size: WorkgroupSize)
-    -> Vec<W2SnivySearchResult> {
+pub async fn white2_snivy_search(
+    config: DSConfig,
+    mode: BW2Mode,
+    workgroup_size: WorkgroupSize,
+) -> Vec<W2SnivySearchResult> {
     let dates = build_autumn_and_winter();
-    snivy_search_by_dates(config, &dates, mode, workgroup_size, find_grotto_advances_candy).await
+    snivy_search_by_dates(
+        config,
+        &dates,
+        mode,
+        workgroup_size,
+        find_grotto_advances_candy,
+    )
+    .await
 }
 
 async fn snivy_search_by_dates(
@@ -79,28 +89,18 @@ async fn snivy_search_by_dates(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
-)
-    -> Vec<W2SnivySearchResult> {
+) -> Vec<W2SnivySearchResult> {
     let batch_size = BATCH_DATES;
     let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
     let mut pending_cpu: Option<thread::JoinHandle<Vec<W2SnivySearchResult>>> = None;
 
-    let (iv_min, iv_max): ([u32; 6], [u32; 6])
-        = ([31, 31, 31, 31, 31, 25], [31; 6]);
+    let (iv_min, iv_max): ([u32; 6], [u32; 6]) = ([31, 31, 31, 31, 31, 25], [31; 6]);
 
     let nat = Nature::new(3);
 
-    let params = GpuInputParams::new(
-        config,
-        [0, 23],
-        [0, 59],
-        [0, 59],
-        16,
-        iv_min,
-        iv_max,
-    );
+    let params = GpuInputParams::new(config, [0, 23], [0, 59], [0, 59], 16, iv_min, iv_max);
     let iv_cfgs = [
         GpuIvConfig {
             iv_step: 16,
@@ -129,7 +129,9 @@ async fn snivy_search_by_dates(
             &date_batch,
             batch_size,
             &iv_cfgs,
-        ).await {
+        )
+        .await
+        {
             Ok(v) => v,
             Err(_) => {
                 date_batch.clear();
@@ -154,7 +156,9 @@ async fn snivy_search_by_dates(
             &date_batch,
             batch_size,
             &iv_cfgs,
-        ).await {
+        )
+        .await
+        {
             Ok(v) => v,
             Err(_) => Vec::new(),
         };
@@ -193,8 +197,7 @@ fn process_base_results(
     mode: BW2Mode,
     nat: Nature,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
-    )
-    -> Vec<W2SnivySearchResult> {
+) -> Vec<W2SnivySearchResult> {
     base_results
         .into_par_iter()
         .filter_map(|base| {
@@ -265,12 +268,7 @@ fn process_base_results(
                 return None;
             }
 
-            let patrat_frames = find_wild_advances_bw2(
-                seed0,
-                800,
-                1000,
-                is_target_patrat
-            );
+            let patrat_frames = find_wild_advances_bw2(seed0, 800, 1000, is_target_patrat);
             if patrat_frames.is_empty() {
                 return None;
             }
@@ -297,8 +295,6 @@ fn process_base_results(
         })
         .collect()
 }
-
-
 
 fn find_wild_advances_bw2(
     seed0: u64,
@@ -327,7 +323,7 @@ fn is_target_pidove(dov: &WildPoke) -> bool {
 
 fn is_target_psyduck(duck: &WildPoke) -> bool {
     let slot_ok = matches!(duck.slot, Some(70..80));
-    let ability_ok = duck.ability().is_some_and(|v|v == 0);
+    let ability_ok = duck.ability().is_some_and(|v| v == 0);
 
     slot_ok && ability_ok
 }
@@ -335,7 +331,10 @@ fn is_target_psyduck(duck: &WildPoke) -> bool {
 fn is_target_patrat(rat: &WildPoke) -> bool {
     //let slot_lv2 = matches!(rat.slot, Some(0..20));
     let slot_lv3 = matches!(rat.slot, Some(40..50));
-    let nat_ok = rat.nature.as_ref().is_some_and(|n|matches!(n.id(), 1|11|16|21));
+    let nat_ok = rat
+        .nature
+        .as_ref()
+        .is_some_and(|n| matches!(n.id(), 1 | 11 | 16 | 21));
 
     slot_lv3 && nat_ok
     // slot_lv2 || (slot_lv3 && nat_ok)
@@ -370,55 +369,43 @@ impl W2SnivySearchResult {
     fn print(&self) {
         use rng_core::lcg::tid_impl::get_frigate_pass;
 
+        println!("seed0: {:016X} seed1: {:016X} ", self.seed0, self.seed1,);
         println!(
-            "seed0: {:016X} seed1: {:016X} ",
-            self.seed0,
-            self.seed1,
-        );
-        println!("date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key={}",
-            self.year,
-            self.month,
-            self.day,
-            self.hour,
-            self.minute,
-            self.second,
-            self.key_presses,
+            "date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key={}",
+            self.year, self.month, self.day, self.hour, self.minute, self.second, self.key_presses,
         );
         println!("TID: {} Pass: {}", self.tid, get_frigate_pass(self.tid));
-            println!("ivs={:?} iv_step={}", self.ivs, self.tepig_iv_step);
-            println!("Tepig frame: {:?}", self.tepig_frames);
-            println!("Pidove:");
-            for pidove in &self.pidove_frames {
-                println!("{}:{}", pidove.0, pidove.1.nature.as_ref().unwrap().name())
-            }
+        println!("ivs={:?} iv_step={}", self.ivs, self.tepig_iv_step);
+        println!("Tepig frame: {:?}", self.tepig_frames);
+        println!("Pidove:");
+        for pidove in &self.pidove_frames {
+            println!("{}:{}", pidove.0, pidove.1.nature.as_ref().unwrap().name())
+        }
 
-            println!("PsyDuck:");
-            for psyduck in &self.psyduck_frames {
-                println!("{}:{}",
-                    psyduck.0,
-                    psyduck.1.nature.as_ref().unwrap().name(),
-                )
-            }
+        println!("PsyDuck:");
+        for psyduck in &self.psyduck_frames {
+            println!(
+                "{}:{}",
+                psyduck.0,
+                psyduck.1.nature.as_ref().unwrap().name(),
+            )
+        }
 
+        println!("Patrat:");
+        for patrat in &self.patrat_frames {
+            println!("{}:{}", patrat.0, patrat.1.nature.as_ref().unwrap().name(),)
+        }
 
-            println!("Patrat:");
-            for patrat in &self.patrat_frames {
-                println!("{}:{}",
-                    patrat.0,
-                    patrat.1.nature.as_ref().unwrap().name(),
-                )
-            }
-
-            print!("candy:");
-            for candy in &self.candy_frames {
-                println!("{}: ", candy.0);
-                for i in 0..candy.1.grottos.len() {
-                    if candy.1.grottos[i].slot().is_some() {
-                        println!("#{}: {:?}", i, candy.1.grottos[i]);
-                    }
+        print!("candy:");
+        for candy in &self.candy_frames {
+            println!("{}: ", candy.0);
+            for i in 0..candy.1.grottos.len() {
+                if candy.1.grottos[i].slot().is_some() {
+                    println!("#{}: {:?}", i, candy.1.grottos[i]);
                 }
             }
-            println!();
+        }
+        println!();
     }
 }
 
@@ -426,26 +413,23 @@ impl W2SnivySearchResult {
 mod tests {
     use rng_core::gpu::workgroup_size::WorkgroupSize::W256;
 
-use super::*;
+    use super::*;
     use std::time::Instant;
 
     #[test]
     #[ignore]
     fn test_white2_snivy() {
-        let ds_config = DSConfig{
-            version : rng_core::models::GameVersion::White2,
-            region : rng_core::models::Region::JPN,
-            timer0 : 0x10FA,
-            is_dslite : false,
-            mac_address : 0x0009bf6d93ce,
+        let ds_config = DSConfig {
+            version: rng_core::models::GameVersion::White2,
+            region: rng_core::models::Region::JPN,
+            timer0: 0x10FA,
+            is_dslite: false,
+            mac_address: 0x0009bf6d93ce,
         };
 
-        let start = Instant::now();let results = pollster::block_on(async {
-            white2_snivy_search(
-                ds_config,
-                BW2Mode::Normal,
-                W256
-            ).await
+        let start = Instant::now();
+        let results = pollster::block_on(async {
+            white2_snivy_search(ds_config, BW2Mode::Normal, W256).await
         });
         let elapsed = start.elapsed();
 

@@ -1,8 +1,12 @@
-use sha1::{Sha1, Digest};
-use crate::models::{DSConfig, GameTime, KeyPresses};
 use crate::lcg::lcg_next;
+use crate::models::{DSConfig, GameTime, KeyPresses};
+use sha1::{Digest, Sha1};
 
-pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_presses: KeyPresses) -> u64 {
+pub fn generate_initial_seed0(
+    config: &DSConfig,
+    game_time: &GameTime,
+    key_presses: KeyPresses,
+) -> u64 {
     let mut hasher = Sha1::new();
 
     // ゲームバージョンのnazo値をリトルエンディアンで追加 data[0]-data[4]に対応
@@ -60,7 +64,7 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
     // 日付情報をdata8形式で取得してビッグエンディアンで追加
     let data8 = game_time.get_date8_format();
     // #[cfg(debug_assertions)]
-    // println!("data8 (date): 0x{:08X} (year:{} month:{} day:{} weekday:{})", 
+    // println!("data8 (date): 0x{:08X} (year:{} month:{} day:{} weekday:{})",
     //     data8, game_time.year, game_time.month, game_time.day, game_time.weekday());
     hasher.update(data8.to_be_bytes());
 
@@ -68,7 +72,7 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
     // 時刻情報をdata9形式で取得してビッグエンディアンで追加
     let time9 = game_time.get_time9_format();
     // #[cfg(debug_assertions)]
-    // println!("data9 (time): 0x{:08X} (hour:{} minute:{} second:{})", 
+    // println!("data9 (time): 0x{:08X} (hour:{} minute:{} second:{})",
     //     time9, game_time.hour, game_time.minute, game_time.second);
     hasher.update(time9.to_be_bytes());
 
@@ -89,8 +93,7 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
 
     // 最初の8バイトをu64として返す
     let initial_seed = u64::from_le_bytes([
-        result[0], result[1], result[2], result[3],
-        result[4], result[5], result[6], result[7],
+        result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7],
     ]);
 
     // #[cfg(debug_assertions)]
@@ -99,7 +102,11 @@ pub fn generate_initial_seed0(config: &DSConfig, game_time: &GameTime, key_press
     initial_seed
 }
 
-pub fn generate_initial_seed1(config: &DSConfig, game_time: &GameTime, key_presses: KeyPresses) -> u64 {
+pub fn generate_initial_seed1(
+    config: &DSConfig,
+    game_time: &GameTime,
+    key_presses: KeyPresses,
+) -> u64 {
     let seed0 = generate_initial_seed0(config, game_time, key_presses);
     // LCGでseed1を生成
     let seed1 = lcg_next(seed0);

@@ -1,13 +1,13 @@
-use infra::gpu::bind_group_builder::BindGroupBuilder;
 use bytemuck;
+use infra::gpu::bind_group_builder::BindGroupBuilder;
 use infra::gpu::buffer_pool::{BufferKind, BufferPool};
 use infra::gpu::encoder_utils::EncoderUtils;
 use infra::gpu::pipeline_factory::PipelineFactory;
 use infra::gpu::readback::Readback;
 use infra::gpu::shader_loader::ShaderLoader;
-use wgpu::util::DeviceExt;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
+use wgpu::util::DeviceExt;
 
 use crate::gpu::bind_layout::config_output_counter_params_layout;
 use crate::gpu::input_layout::GpuIvConfig;
@@ -48,12 +48,20 @@ pub async fn run_mt_seedhigh_candidates(
 
     let pool = BufferPool::new(&ctx.device);
     let config_buffer = pool
-        .create_init(std::slice::from_ref(config), BufferKind::Input, "rng_core_mt_seedhigh_config_buffer")
+        .create_init(
+            std::slice::from_ref(config),
+            BufferKind::Input,
+            "rng_core_mt_seedhigh_config_buffer",
+        )
         .buffer;
 
     let output_bytes = (MAX_RESULTS * std::mem::size_of::<u32>()) as u64;
     let output_buffer = pool
-        .create::<u32>(output_bytes as usize, BufferKind::Output, "rng_core_mt_seedhigh_output_buffer")
+        .create::<u32>(
+            output_bytes as usize,
+            BufferKind::Output,
+            "rng_core_mt_seedhigh_output_buffer",
+        )
         .buffer;
 
     let layout = config_output_counter_params_layout(&ctx.device);
@@ -80,18 +88,26 @@ pub async fn run_mt_seedhigh_candidates(
         let remaining = total_len - base;
         let chunk_len = remaining.min(max_dispatch) as u32;
 
-        let counter_buffer = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("rng_core_mt_seedhigh_counter_buffer"),
-            contents: bytemuck::bytes_of(&0u32),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST,
-        });
+        let counter_buffer = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("rng_core_mt_seedhigh_counter_buffer"),
+                contents: bytemuck::bytes_of(&0u32),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_SRC
+                    | wgpu::BufferUsages::COPY_DST,
+            });
 
         let params = DispatchParams {
             base_index: base,
             total_len,
         };
         let params_buffer = pool
-            .create_init(std::slice::from_ref(&params), BufferKind::Input, "rng_core_mt_seedhigh_params_buffer")
+            .create_init(
+                std::slice::from_ref(&params),
+                BufferKind::Input,
+                "rng_core_mt_seedhigh_params_buffer",
+            )
             .buffer;
 
         let bind_group = BindGroupBuilder::new(&layout)
@@ -101,9 +117,11 @@ pub async fn run_mt_seedhigh_candidates(
             .buffer(3, &params_buffer)
             .build(&ctx.device, Some("rng_core_mt_seedhigh_bind_group"));
 
-        let mut encoder = ctx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("rng_core_mt_seedhigh_encoder"),
-        });
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("rng_core_mt_seedhigh_encoder"),
+            });
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("rng_core_mt_seedhigh_pass"),

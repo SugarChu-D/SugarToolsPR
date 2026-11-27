@@ -1,5 +1,5 @@
-use bytemuck::{Pod, Zeroable};
 use crate::models::GameTime;
+use bytemuck::{Pod, Zeroable};
 
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]

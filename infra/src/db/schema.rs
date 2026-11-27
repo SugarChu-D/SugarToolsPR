@@ -1,6 +1,6 @@
 use rusqlite::Connection;
 
-pub fn create_tables(conn: &Connection) -> rusqlite::Result<()>{
+pub fn create_tables(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS results (
             initial_seed_0 INTEGER PRIMARY KEY,
@@ -26,21 +26,23 @@ pub fn create_tables(conn: &Connection) -> rusqlite::Result<()>{
 }
 
 #[cfg(test)]
-mod tests{
+mod tests {
     use super::*;
 
     #[test]
-    fn test_create_tables(){
+    fn test_create_tables() {
         let conn = Connection::open_in_memory().unwrap();
         create_tables(&conn).unwrap();
 
         // テーブルが存在するか確認
-        let mut stmt 
-        = conn.prepare(
-            "SELECT name FROM sqlite_master 
+        let mut stmt = conn
+            .prepare(
+                "SELECT name FROM sqlite_master 
             WHERE type='table'
             AND name = 'results'
-            ").unwrap();
+            ",
+            )
+            .unwrap();
         let exists = stmt.exists([]).unwrap();
         assert!(exists);
     }

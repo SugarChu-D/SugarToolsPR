@@ -2,22 +2,15 @@ use std::collections::HashSet;
 
 use infra::gpu::context::GpuContext;
 use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
+use rng_core::gpu::workgroup_size::WorkgroupSize;
 use rng_core::lcg::nature::Nature;
-use rng_core::lcg::wild_poke::{find_wild_advances_bw1, WildPoke};
-use rng_core::models::game_date::GameDate;
+use rng_core::lcg::wild_poke::{WildPoke, find_wild_advances_bw1};
 use rng_core::models::ds_config::DSConfig;
+use rng_core::models::game_date::GameDate;
 use rng_core::models::key_presses::KeyPresses;
 use rng_core::result_base::ResultBase;
-use rng_core::gpu::workgroup_size::WorkgroupSize;
 
-const TARGET_DATES: [(u8, u8); 6] = [
-    (4, 29),
-    (4, 30),
-    (8, 30),
-    (8, 31),
-    (12, 30),
-    (12, 31),
-];
+const TARGET_DATES: [(u8, u8); 6] = [(4, 29), (4, 30), (8, 30), (8, 31), (12, 30), (12, 31)];
 
 #[derive(Debug, Clone)]
 pub struct PupSearchResult {
@@ -36,7 +29,11 @@ pub struct PupSearchResult {
 
 const BATCH_DATES: usize = 256;
 
-pub async fn pup_search(ds_config: DSConfig, wild_max_advances: u32, workgroup_size: WorkgroupSize) -> Vec<PupSearchResult> {
+pub async fn pup_search(
+    ds_config: DSConfig,
+    wild_max_advances: u32,
+    workgroup_size: WorkgroupSize,
+) -> Vec<PupSearchResult> {
     let batch_size = BATCH_DATES;
     let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
@@ -45,16 +42,8 @@ pub async fn pup_search(ds_config: DSConfig, wild_max_advances: u32, workgroup_s
     let iv_min: [u32; 6] = [30, 31, 30, 0, 30, 31];
     let iv_max: [u32; 6] = [31, 31, 31, 31, 31, 31];
 
-    let params = GpuInputParams::new(
-        ds_config,
-        [0, 23],
-        [0, 59],
-        [0, 59],
-        0,
-        iv_min,
-        iv_max,
-    );
-    
+    let params = GpuInputParams::new(ds_config, [0, 23], [0, 59], [0, 59], 0, iv_min, iv_max);
+
     let mut dates = Vec::with_capacity(batch_size);
     for &(month, day) in &TARGET_DATES {
         for year in 0..=99u8 {
@@ -96,7 +85,13 @@ pub async fn pup_search(ds_config: DSConfig, wild_max_advances: u32, workgroup_s
     results
 }
 
-pub async fn sawk_search(ds_config: DSConfig, wild_min_advances: u32, wild_max_advances: u32, iv_step: u32, workgroup_size: WorkgroupSize) -> Vec<PupSearchResult> {
+pub async fn sawk_search(
+    ds_config: DSConfig,
+    wild_min_advances: u32,
+    wild_max_advances: u32,
+    iv_step: u32,
+    workgroup_size: WorkgroupSize,
+) -> Vec<PupSearchResult> {
     let batch_size = BATCH_DATES;
     let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
@@ -177,18 +172,11 @@ async fn collect_gpu_results(
     is_target: &dyn Fn(&WildPoke) -> bool,
     batch_size: usize,
 ) {
-    let base_results = match run_result_base_seedhigh_by_dates(
-        ctx,
-        ds_config,
-        params,
-        dates,
-        batch_size,
-    )
-    .await
-    {
-        Ok(v) => v,
-        Err(_) => return,
-    };
+    let base_results =
+        match run_result_base_seedhigh_by_dates(ctx, ds_config, params, dates, batch_size).await {
+            Ok(v) => v,
+            Err(_) => return,
+        };
 
     for base in base_results.into_iter() {
         let ResultBase {
@@ -227,7 +215,7 @@ async fn collect_gpu_results(
 fn is_target_pup(pup: &WildPoke) -> bool {
     let slot_ok = matches!(pup.slot, Some(94..=97) | Some(99));
     let nature_ok = pup.nature.as_ref() == Some(&Nature::new(3));
-    let ability_ok = pup.ability().is_some_and(|v|v == 1);
+    let ability_ok = pup.ability().is_some_and(|v| v == 1);
     let gender_ok = pup.gender().is_some_and(|g| g >= 127);
 
     slot_ok && nature_ok && ability_ok && gender_ok
@@ -236,7 +224,7 @@ fn is_target_pup(pup: &WildPoke) -> bool {
 fn is_target_sawk(sawk: &WildPoke) -> bool {
     let slot_ok = matches!(sawk.slot, Some(94..=97) | Some(99));
     let nature_ok = sawk.nature.as_ref() == Some(&Nature::new(3));
-    let ability_ok = sawk.ability().is_some_and(|v|v == 1);
+    let ability_ok = sawk.ability().is_some_and(|v| v == 1);
     let item_ok = matches!(sawk.item, Some(50..=54));
 
     slot_ok && nature_ok && ability_ok && item_ok
@@ -244,22 +232,23 @@ fn is_target_sawk(sawk: &WildPoke) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
     use super::*;
     use rng_core::models::game_version::GameVersion;
+    use std::time::Instant;
 
     #[test]
     #[ignore]
     fn test_black1_pups() {
-        let ds_config = DSConfig{
-            version : GameVersion::Black,
-            region : rng_core::models::Region::JPN,
-            timer0 : 0xc7a,
-            is_dslite : false,
-            mac_address : 0x9bf6d93ce,
+        let ds_config = DSConfig {
+            version: GameVersion::Black,
+            region: rng_core::models::Region::JPN,
+            timer0: 0xc7a,
+            is_dslite: false,
+            mac_address: 0x9bf6d93ce,
         };
         let start = Instant::now();
-        let results = pollster::block_on(async { pup_search(ds_config, 70, WorkgroupSize::W256).await });
+        let results =
+            pollster::block_on(async { pup_search(ds_config, 70, WorkgroupSize::W256).await });
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);
@@ -285,20 +274,24 @@ mod tests {
     #[test]
     #[ignore]
     fn test_black1_sawk() {
-        let ds_config = DSConfig{
-            version : GameVersion::Black,
-            region : rng_core::models::Region::JPN,
-            timer0 : 0xc7a,
-            is_dslite : false,
-            mac_address : 0x9bf5aa1fc,
+        let ds_config = DSConfig {
+            version: GameVersion::Black,
+            region: rng_core::models::Region::JPN,
+            timer0: 0xc7a,
+            is_dslite: false,
+            mac_address: 0x9bf5aa1fc,
         };
         let start = Instant::now();
-        let results = pollster::block_on(async { sawk_search(ds_config,30, 100, 0, WorkgroupSize::W256).await });
+        let results = pollster::block_on(async {
+            sawk_search(ds_config, 30, 100, 0, WorkgroupSize::W256).await
+        });
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);
         println!("Total results: {}", results.len());
-        println!("seed0, seed1, year, month, day, hour, minute, second, key_presses, h, a, b, c, d, s, advances");
+        println!(
+            "seed0, seed1, year, month, day, hour, minute, second, key_presses, h, a, b, c, d, s, advances"
+        );
         for r in results.iter() {
             println!(
                 "{:016X},{:016X},{:02},{:02},{:02},{:02},{:02},{:02},{:?},{:?},{:?}",

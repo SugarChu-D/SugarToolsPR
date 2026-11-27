@@ -1,21 +1,21 @@
-﻿use core::panic;
+use core::panic;
 use std::collections::HashSet;
 use std::thread;
 
 use infra::gpu::context::GpuContext;
 use rayon::prelude::*;
-use rng_core::gpu::helpers::run_result_base_seedhigh_by_dates_multi_iv;
 use rng_core::gpu::helpers::GpuInputParams;
+use rng_core::gpu::helpers::run_result_base_seedhigh_by_dates_multi_iv;
 use rng_core::gpu::input_layout::GpuIvConfig;
-use rng_core::lcg::{Lcg, OffsetType};
-use rng_core::lcg::grotto::Grottos;
-use rng_core::lcg::nature::Nature as Nature;
-use rng_core::lcg::wild_poke::WildPoke;
-use rng_core::models::DSConfig as DSConfig;
-use rng_core::models::game_date::{GameDate, build_date_except_summer};
 use rng_core::gpu::workgroup_size::WorkgroupSize;
+use rng_core::lcg::grotto::Grottos;
+use rng_core::lcg::nature::Nature;
+use rng_core::lcg::wild_poke::WildPoke;
+use rng_core::lcg::{Lcg, OffsetType};
+use rng_core::models::DSConfig;
+use rng_core::models::game_date::{GameDate, build_date_except_summer};
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct TepigSearchResult {
     pub seed0: u64,
     pub seed1: u64,
@@ -65,7 +65,7 @@ fn tepig_iv_check_naughty(ivs: [u8; 6]) -> bool {
     && (29..=31).contains(&ivs[2]) // B
     && (29..=31).contains(&ivs[3]) // C
     && ivs[5] == 25 // S
-} 
+}
 
 /**
 うっかりやに適した個体値かどうかを確かめる
@@ -88,24 +88,51 @@ fn tepig_iv_check(ivs: [u8; 6], nat: &Nature) -> bool {
 
 const BATCH_DATES: usize = 256;
 
-pub async fn white2_tepig_dragonite_search(config: DSConfig, nat: Nature, mode: BW2Mode, workgroup_size: WorkgroupSize)
-    -> Vec<TepigSearchResult> {
+pub async fn white2_tepig_dragonite_search(
+    config: DSConfig,
+    nat: Nature,
+    mode: BW2Mode,
+    workgroup_size: WorkgroupSize,
+) -> Vec<TepigSearchResult> {
     let dates = build_date_except_summer();
-    tepig_search_by_dates(config, nat, &dates, mode, workgroup_size, find_grotto_advances_candy_dragonite).await
+    tepig_search_by_dates(
+        config,
+        nat,
+        &dates,
+        mode,
+        workgroup_size,
+        find_grotto_advances_candy_dragonite,
+    )
+    .await
 }
 
-pub async fn white2_tepig_search(config: DSConfig, year: u8, month: u8, day: u8, nat: Nature, mode: BW2Mode, workgroup_size: WorkgroupSize)
-    -> Vec<TepigSearchResult> {
+pub async fn white2_tepig_search(
+    config: DSConfig,
+    year: u8,
+    month: u8,
+    day: u8,
+    nat: Nature,
+    mode: BW2Mode,
+    workgroup_size: WorkgroupSize,
+) -> Vec<TepigSearchResult> {
     if year >= 100 || month > 12 || day > 31 {
         panic!("Invalid Date!")
     };
 
-    if month % 4 == 2{
+    if month % 4 == 2 {
         panic!("SUMMER MONTH!")
     };
 
-    let dates = [GameDate{ year, month, day }];
-    tepig_search_by_dates(config, nat, &dates, mode, workgroup_size, find_grotto_advances_candy).await
+    let dates = [GameDate { year, month, day }];
+    tepig_search_by_dates(
+        config,
+        nat,
+        &dates,
+        mode,
+        workgroup_size,
+        find_grotto_advances_candy,
+    )
+    .await
 }
 
 async fn tepig_search_by_dates(
@@ -115,8 +142,7 @@ async fn tepig_search_by_dates(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
-)
-    -> Vec<TepigSearchResult> {
+) -> Vec<TepigSearchResult> {
     let batch_size = BATCH_DATES;
     let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
@@ -129,15 +155,7 @@ async fn tepig_search_by_dates(
         any => panic!("Invalid Nature: {}", any.to_string()),
     };
 
-    let params = GpuInputParams::new(
-        config,
-        [0, 23],
-        [0, 59],
-        [0, 59],
-        16,
-        iv_min,
-        iv_max,
-    );
+    let params = GpuInputParams::new(config, [0, 23], [0, 59], [0, 59], 16, iv_min, iv_max);
     let iv_cfgs = [
         GpuIvConfig {
             iv_step: 16,
@@ -166,7 +184,9 @@ async fn tepig_search_by_dates(
             &date_batch,
             batch_size,
             &iv_cfgs,
-        ).await {
+        )
+        .await
+        {
             Ok(v) => v,
             Err(_) => {
                 date_batch.clear();
@@ -191,7 +211,9 @@ async fn tepig_search_by_dates(
             &date_batch,
             batch_size,
             &iv_cfgs,
-        ).await {
+        )
+        .await
+        {
             Ok(v) => v,
             Err(_) => Vec::new(),
         };
@@ -230,8 +252,7 @@ fn process_base_results(
     mode: BW2Mode,
     nat: Nature,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
-    )
-    -> Vec<TepigSearchResult> {
+) -> Vec<TepigSearchResult> {
     base_results
         .into_par_iter()
         .filter_map(|base| {
@@ -302,8 +323,6 @@ fn process_base_results(
                 return None;
             }
 
-            
-
             Some(TepigSearchResult {
                 seed0,
                 seed1,
@@ -325,8 +344,6 @@ fn process_base_results(
         })
         .collect()
 }
-
-
 
 fn find_wild_advances_bw2(
     seed0: u64,
@@ -350,12 +367,12 @@ fn find_wild_advances_bw2(
 }
 
 fn is_target_pidove(dov: &WildPoke) -> bool {
-    return matches!(dov.slot, Some(0..20) | Some(80..85))
+    return matches!(dov.slot, Some(0..20) | Some(80..85));
 }
 
 fn is_target_psyduck(duck: &WildPoke) -> bool {
     let slot_ok = matches!(duck.slot, Some(70..80));
-    let ability_ok = duck.ability().is_some_and(|v|v == 0);
+    let ability_ok = duck.ability().is_some_and(|v| v == 0);
 
     slot_ok && ability_ok
 }
@@ -398,9 +415,9 @@ fn find_grotto_advances_candy_dragonite(seed0: u64, start: u64, end: u64) -> Vec
         let index3_ok = grottos.get(GROTTO_INDEX).is_some_and(|grotto| {
             grotto.sub_slot() == Some(GROTTO_SUB_SLOT) && grotto.slot() == Some(GROTTO_SLOT)
         });
-        let index19_ok = grottos.get(GROTTO_INDEX_2).is_some_and(|grotto| {
-            grotto.slot() == Some(GROTTO_SLOT_2)
-        });
+        let index19_ok = grottos
+            .get(GROTTO_INDEX_2)
+            .is_some_and(|grotto| grotto.slot() == Some(GROTTO_SLOT_2));
         if index3_ok && index19_ok {
             out.push((frame as u32, grottos));
         }
@@ -411,56 +428,48 @@ fn find_grotto_advances_candy_dragonite(seed0: u64, start: u64, end: u64) -> Vec
     out
 }
 
-
 impl TepigSearchResult {
     #[cfg(test)]
     fn print(&self) {
         use rng_core::lcg::tid_impl::get_frigate_pass;
 
+        println!("seed0: {:016X} seed1: {:016X} ", self.seed0, self.seed1,);
         println!(
-            "seed0: {:016X} seed1: {:016X} ",
-            self.seed0,
-            self.seed1,
-        );
-        println!("date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key={}",
-            self.year,
-            self.month,
-            self.day,
-            self.hour,
-            self.minute,
-            self.second,
-            self.key_presses,
+            "date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key={}",
+            self.year, self.month, self.day, self.hour, self.minute, self.second, self.key_presses,
         );
         println!("TID: {} Pass: {}", self.tid, get_frigate_pass(self.tid));
-            println!("ivs={:?} iv_step={}", self.ivs, self.tepig_iv_step);
-            println!("Tepig frame: {:?}", self.tepig_frames);
-            println!("Pidove:");
-            for pidove in &self.pidove_frames {
-                println!("{}:{} {}",
-                    pidove.0,
-                    if pidove.1.slot.is_some_and(|s| s < 20) {"Lv.2"} else {"Lv.4"},
-                    pidove.1.nature.clone().unwrap().name(),
-                )
-            }
+        println!("ivs={:?} iv_step={}", self.ivs, self.tepig_iv_step);
+        println!("Tepig frame: {:?}", self.tepig_frames);
+        println!("Pidove:");
+        for pidove in &self.pidove_frames {
+            println!(
+                "{}:{} {}",
+                pidove.0,
+                if pidove.1.slot.is_some_and(|s| s < 20) {
+                    "Lv.2"
+                } else {
+                    "Lv.4"
+                },
+                pidove.1.nature.clone().unwrap().name(),
+            )
+        }
 
-            println!("PsyDuck:");
-            for psyduck in &self.psyduck_frames {
-                println!("{}:{}",
-                    psyduck.0,
-                    psyduck.1.nature.clone().unwrap().name(),
-                )
-            }
+        println!("PsyDuck:");
+        for psyduck in &self.psyduck_frames {
+            println!("{}:{}", psyduck.0, psyduck.1.nature.clone().unwrap().name(),)
+        }
 
-            print!("candy:");
-            for candy in &self.candy_frames {
-                println!("{}: ", candy.0);
-                for i in 0..candy.1.grottos.len() {
-                    if candy.1.grottos[i].slot().is_some() {
-                        println!("#{}: {:?}", i, candy.1.grottos[i]);
-                    }
+        print!("candy:");
+        for candy in &self.candy_frames {
+            println!("{}: ", candy.0);
+            for i in 0..candy.1.grottos.len() {
+                if candy.1.grottos[i].slot().is_some() {
+                    println!("#{}: {:?}", i, candy.1.grottos[i]);
                 }
             }
-            println!();
+        }
+        println!();
     }
 }
 
@@ -468,31 +477,23 @@ impl TepigSearchResult {
 mod tests {
     use rng_core::gpu::workgroup_size::WorkgroupSize::W256;
 
-use super::*;
+    use super::*;
     use std::time::Instant;
 
     #[test]
     #[ignore]
     fn test_white2_tepig_single_date() {
-        let ds_config = DSConfig{
-            version : rng_core::models::GameVersion::White2,
-            region : rng_core::models::Region::JPN,
-            timer0 : 0x10FA,
-            is_dslite : false,
-            mac_address : 0x0009bf6d93ce,
+        let ds_config = DSConfig {
+            version: rng_core::models::GameVersion::White2,
+            region: rng_core::models::Region::JPN,
+            timer0: 0x10FA,
+            is_dslite: false,
+            mac_address: 0x0009bf6d93ce,
         };
 
         let start = Instant::now();
         let results = pollster::block_on(async {
-            white2_tepig_search(
-                ds_config,
-                33,
-                8,
-                27,
-                Nature::new(4),
-                BW2Mode::Normal,
-                W256,
-            ).await // 例: Rash
+            white2_tepig_search(ds_config, 33, 8, 27, Nature::new(4), BW2Mode::Normal, W256).await // 例: Rash
         });
         let elapsed = start.elapsed();
 
@@ -505,21 +506,17 @@ use super::*;
     #[test]
     #[ignore]
     fn test_white2_tepig_dragonite() {
-        let ds_config = DSConfig{
-            version : rng_core::models::GameVersion::White2,
-            region : rng_core::models::Region::JPN,
-            timer0 : 0x10FA,
-            is_dslite : false,
-            mac_address : 0x0009bf6d93ce,
+        let ds_config = DSConfig {
+            version: rng_core::models::GameVersion::White2,
+            region: rng_core::models::Region::JPN,
+            timer0: 0x10FA,
+            is_dslite: false,
+            mac_address: 0x0009bf6d93ce,
         };
 
-        let start = Instant::now();let results = pollster::block_on(async {
-            white2_tepig_dragonite_search(
-                ds_config,
-                Nature::new(4),
-                BW2Mode::Normal,
-                W256,
-            ).await // 例: Naughty
+        let start = Instant::now();
+        let results = pollster::block_on(async {
+            white2_tepig_dragonite_search(ds_config, Nature::new(4), BW2Mode::Normal, W256).await // 例: Naughty
         });
         let elapsed = start.elapsed();
 

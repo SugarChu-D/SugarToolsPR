@@ -64,7 +64,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn gpu_context_can_be_created(){
+    fn gpu_context_can_be_created() {
         pollster::block_on(async {
             let _ctx = GpuContext::new().await;
         });

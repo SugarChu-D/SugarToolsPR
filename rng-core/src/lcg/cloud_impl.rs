@@ -1,15 +1,10 @@
+use super::wild_poke::WildPoke;
 use super::{Lcg, OffsetType};
 use std::cmp::max;
 use std::cmp::min;
 use std::collections::HashSet;
-use super::wild_poke::WildPoke;
 
-static RANGES: [[i32; 4]; 4] = [
-    [0, 5, -5, 5],
-    [-5, 0, -5, 5],
-    [-5, 5, -5, 0],
-    [-5, 5, 0, 5],
-];
+static RANGES: [[i32; 4]; 4] = [[0, 5, -5, 5], [-5, 0, -5, 5], [-5, 5, -5, 0], [-5, 5, 0, 5]];
 
 pub trait CloudTileSource {
     fn contains_tile(&self, tile: &[i32; 2]) -> bool;
@@ -102,7 +97,7 @@ impl Lcg {
         let mut lcg_local = self.clone();
         let trigger = lcg_local.rand(1000);
         if trigger > 400 {
-            return WildPoke::default()
+            return WildPoke::default();
         }
         let mut result = WildPoke::default();
         lcg_local.next();
@@ -119,7 +114,7 @@ pub fn find_cloud_exists_advances(
     seed0: u64,
     min_advances: u32,
     max_advances: u32,
-    offset_type: OffsetType
+    offset_type: OffsetType,
 ) -> Vec<u32> {
     let mut seed = Lcg::new(seed0);
     seed.offset_seed0(offset_type);
@@ -139,7 +134,7 @@ pub fn find_cloud_poke_advances(
     min_advances: u32,
     max_advances: u32,
     is_target: &dyn Fn(&WildPoke) -> bool,
-    offset_type: OffsetType
+    offset_type: OffsetType,
 ) -> Vec<u32> {
     let mut seed = Lcg::new(seed0);
     seed.offset_seed0(offset_type);

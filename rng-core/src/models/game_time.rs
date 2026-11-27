@@ -90,19 +90,25 @@ impl GameTime {
         }
     }
 
-
     pub fn get_date8_format(&self) -> u32 {
         // 10進数を16進数に変換する処理を直接ビット演算で行う
         let hex_year = ((self.year / 10) << 4) | (self.year % 10);
         let hex_month = ((self.month / 10) << 4) | (self.month % 10);
         let hex_day = ((self.day / 10) << 4) | (self.day % 10);
 
-        ((hex_year as u32) << 24) | ((hex_month as u32) << 16) | ((hex_day as u32) << 8) | self.weekday() as u32
+        ((hex_year as u32) << 24)
+            | ((hex_month as u32) << 16)
+            | ((hex_day as u32) << 8)
+            | self.weekday() as u32
     }
 
     pub fn get_time9_format(&self) -> u32 {
         // もし午後なら、時間に40を加える
-        let adjusted_hour: u8 = if self.hour >= 12 { self.hour + 40 } else { self.hour };
+        let adjusted_hour: u8 = if self.hour >= 12 {
+            self.hour + 40
+        } else {
+            self.hour
+        };
 
         // 各値を10進数から16進数として解釈
         let hex_hour: u8 = ((adjusted_hour / 10) << 4) | (adjusted_hour % 10);

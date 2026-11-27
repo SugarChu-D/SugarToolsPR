@@ -1,5 +1,5 @@
-use super::game_time::*;
 use super::field_range::*;
+use super::game_time::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct GameTimeSpec {
@@ -47,7 +47,6 @@ impl Iterator for GameTimeIterator {
         Some(out)
     }
 }
-
 
 impl GameTimeIterator {
     pub fn new(spec: GameTimeSpec) -> Self {
@@ -108,7 +107,7 @@ impl GameTimeIterator {
 }
 
 #[cfg(test)]
-mod tests{
+mod tests {
     use super::*;
 
     #[test]
@@ -135,10 +134,9 @@ mod tests{
         assert!(it.next().is_none());
     }
 
-
     #[test]
     fn iter_second_carry() {
-            let spec = GameTimeSpec {
+        let spec = GameTimeSpec {
             year: FieldRange { min: 26, max: 26 },
             month: FieldRange { min: 1, max: 1 },
             day: FieldRange { min: 1, max: 1 },
