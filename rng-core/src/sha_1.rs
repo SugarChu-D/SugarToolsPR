@@ -114,3 +114,30 @@ pub fn generate_initial_seed1(
     println!("Generated initial seed1: 0x{:016X}", seed1);
     seed1
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{GameVersion, Region};
+
+    #[test]
+    fn initial_seed0_matches_known_value() {
+        let config = DSConfig {
+            version: GameVersion::White2,
+            region: Region::JPN,
+            timer0: 0x10FA,
+            mac_address: 0x0009_bf6d_93ce,
+            is_dslite: false,
+        };
+        let game_time = GameTime::new(63, 10, 1, 18, 39, 19);
+        let key_presses = KeyPresses::new(0x2fff);
+        let expected_seed0 = 0x416BFDD6B14733D2;
+
+        let actual_seed0 = generate_initial_seed0(&config, &game_time, key_presses);
+
+        assert_eq!(
+            actual_seed0, expected_seed0,
+            "seed0: actual {actual_seed0:#018X}, expected {expected_seed0:#018X}"
+        );
+    }
+}
