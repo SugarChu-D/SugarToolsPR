@@ -2,6 +2,14 @@ pub use super::error::GpuInitError;
 
 pub const DEFAULT_WORKGROUP_SIZE: u32 = 256;
 
+/// Information about the adapter and the limits enabled on this device.
+#[derive(Debug, Clone)]
+pub struct GpuCapabilities {
+    pub adapter_name: String,
+    pub supports_shader_int64: bool,
+    pub max_workgroup_size: u32,
+}
+
 pub struct GpuContext {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -19,6 +27,10 @@ impl GpuContext {
     /// separate application build. Typical values to benchmark are 64, 128,
     /// and 256.
     pub async fn new_with_workgroup_size(workgroup_size: u32) -> Result<Self, GpuInitError> {
+        Ok(Self::initialize(workgroup_size).await?.0)
+    }
+
+    pub async fn initialize(workgroup_size: u32) -> Result<(Self, GpuCapabilities), GpuInitError> {
         let instance = wgpu::Instance::default();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -28,7 +40,8 @@ impl GpuContext {
             })
             .await
             .map_err(GpuInitError::Adapter)?;
-        if !adapter.features().contains(wgpu::Features::SHADER_INT64) {
+        let supports_shader_int64 = adapter.features().contains(wgpu::Features::SHADER_INT64);
+        if !supports_shader_int64 {
             return Err(GpuInitError::UnsupportedShaderInt64);
         }
 
@@ -53,11 +66,18 @@ impl GpuContext {
             });
         }
 
-        Ok(Self {
-            device,
-            queue,
-            workgroup_size,
-        })
+        Ok((
+            Self {
+                device,
+                queue,
+                workgroup_size,
+            },
+            GpuCapabilities {
+                adapter_name: adapter.get_info().name,
+                supports_shader_int64,
+                max_workgroup_size: max,
+            },
+        ))
     }
 }
 

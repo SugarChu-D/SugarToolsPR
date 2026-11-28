@@ -1,5 +1,7 @@
-use crate::SearchError;
+use crate::{SearchError, SearchRuntime};
 use std::collections::HashSet;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use infra::gpu::context::GpuContext;
@@ -88,6 +90,43 @@ fn tepig_iv_check(ivs: [u8; 6], nat: &Nature) -> bool {
 
 const BATCH_DATES: usize = 256;
 
+/// A signal shared between a Tepig search and its caller.
+#[derive(Debug, Clone, Default)]
+pub struct TepigSearchCancellation(Arc<AtomicBool>);
+
+impl TepigSearchCancellation {
+    /// Requests cancellation for every search using this signal.
+    pub fn cancel(&self) {
+        self.0.store(true, Ordering::Relaxed);
+    }
+
+    fn is_cancelled(&self) -> bool {
+        self.0.load(Ordering::Relaxed)
+    }
+}
+
+/// Cumulative counts after a batch has completed CPU processing and seed deduplication.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TepigSearchProgress {
+    pub completed_batches: usize,
+    pub total_batches: usize,
+    pub unique_results: usize,
+}
+
+#[derive(Default)]
+struct TepigSearchExecution<'a> {
+    runtime: Option<&'a SearchRuntime>,
+    cancellation: Option<&'a TepigSearchCancellation>,
+    on_progress: Option<&'a mut (dyn FnMut(TepigSearchProgress) + Send)>,
+}
+
+fn check_cancelled(cancellation: Option<&TepigSearchCancellation>) -> Result<(), SearchError> {
+    if cancellation.is_some_and(TepigSearchCancellation::is_cancelled) {
+        return Err(SearchError::Cancelled);
+    }
+    Ok(())
+}
+
 pub async fn white2_tepig_dragonite_search(
     config: DSConfig,
     nat: Nature,
@@ -104,6 +143,29 @@ pub async fn white2_tepig_dragonite_search(
     .await
 }
 
+/// Searches all eligible dates and reports cumulative progress after each completed batch.
+///
+/// The callback runs on the search task. Cancellation is cooperative, so an in-flight GPU batch
+/// finishes and any CPU worker is joined before the search returns.
+pub async fn white2_tepig_dragonite_search_with_control(
+    config: DSConfig,
+    nat: Nature,
+    mode: BW2Mode,
+    workgroup_size: WorkgroupSize,
+    runtime: Option<&SearchRuntime>,
+    cancellation: &TepigSearchCancellation,
+    on_progress: impl FnMut(TepigSearchProgress) + Send,
+) -> Result<Vec<TepigSearchResult>, SearchError> {
+    DragoniteSearchRequest {
+        config,
+        nature: nat,
+        mode,
+        workgroup_size,
+    }
+    .run_with_control(runtime, cancellation, on_progress)
+    .await
+}
+
 /// Inputs for the White 2 Tepig and Dragonite search across all non-summer dates.
 #[derive(Debug, Clone)]
 pub struct DragoniteSearchRequest {
@@ -116,6 +178,29 @@ pub struct DragoniteSearchRequest {
 impl DragoniteSearchRequest {
     /// Returns matching seeds, or the input, GPU or worker error that stopped the search.
     pub async fn run(self) -> Result<Vec<TepigSearchResult>, SearchError> {
+        self.run_using(TepigSearchExecution::default()).await
+    }
+
+    /// Runs the search with cancellation and cumulative batch progress.
+    pub async fn run_with_control(
+        self,
+        runtime: Option<&SearchRuntime>,
+        cancellation: &TepigSearchCancellation,
+        mut on_progress: impl FnMut(TepigSearchProgress) + Send,
+    ) -> Result<Vec<TepigSearchResult>, SearchError> {
+        self.run_using(TepigSearchExecution {
+            runtime,
+            cancellation: Some(cancellation),
+            on_progress: Some(&mut on_progress),
+        })
+        .await
+    }
+
+    async fn run_using(
+        self,
+        execution: TepigSearchExecution<'_>,
+    ) -> Result<Vec<TepigSearchResult>, SearchError> {
+        check_cancelled(execution.cancellation)?;
         let dates = build_date_except_summer();
         tepig_search_by_dates(
             self.config,
@@ -124,6 +209,7 @@ impl DragoniteSearchRequest {
             self.mode,
             self.workgroup_size,
             find_grotto_advances_candy_dragonite,
+            execution,
         )
         .await
     }
@@ -162,6 +248,44 @@ pub struct TepigSearchRequest {
 impl TepigSearchRequest {
     /// Returns matching seeds, or the input, GPU or worker error that stopped the search.
     pub async fn run(self) -> Result<Vec<TepigSearchResult>, SearchError> {
+        self.run_using(TepigSearchExecution::default()).await
+    }
+
+    /// Runs the search using a previously initialized GPU device and queue.
+    pub async fn run_with_runtime(
+        self,
+        runtime: &SearchRuntime,
+    ) -> Result<Vec<TepigSearchResult>, SearchError> {
+        self.run_using(TepigSearchExecution {
+            runtime: Some(runtime),
+            ..Default::default()
+        })
+        .await
+    }
+
+    /// Runs the search with cancellation and a per-batch progress callback.
+    ///
+    /// Pass an existing runtime to reuse its GPU device and queue. The callback runs on the search
+    /// task. Cancellation returns `SearchError::Cancelled` once any in-flight GPU batch and CPU
+    /// worker finish.
+    pub async fn run_with_control(
+        self,
+        runtime: Option<&SearchRuntime>,
+        cancellation: &TepigSearchCancellation,
+        mut on_progress: impl FnMut(TepigSearchProgress) + Send,
+    ) -> Result<Vec<TepigSearchResult>, SearchError> {
+        self.run_using(TepigSearchExecution {
+            runtime,
+            cancellation: Some(cancellation),
+            on_progress: Some(&mut on_progress),
+        })
+        .await
+    }
+
+    async fn run_using(
+        self,
+        execution: TepigSearchExecution<'_>,
+    ) -> Result<Vec<TepigSearchResult>, SearchError> {
         let month = self.date.month();
         if month % 4 == 2 {
             return Err(SearchError::SummerMonth(month));
@@ -173,6 +297,7 @@ impl TepigSearchRequest {
             self.mode,
             self.workgroup_size,
             find_grotto_advances_candy,
+            execution,
         )
         .await
     }
@@ -185,11 +310,16 @@ async fn tepig_search_by_dates(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
+    execution: TepigSearchExecution<'_>,
 ) -> Result<Vec<TepigSearchResult>, SearchError> {
     let batch_size = BATCH_DATES;
-    let mut results = Vec::new();
-    let mut seen_seed0: HashSet<u64> = HashSet::new();
-    let mut pending_cpu: Option<thread::JoinHandle<Vec<TepigSearchResult>>> = None;
+    let TepigSearchExecution {
+        runtime,
+        cancellation,
+        on_progress,
+    } = execution;
+    let mut completed = CompletedTepigBatches::new(dates.len().div_ceil(batch_size), on_progress);
+    let mut pending_cpu = None;
 
     let (iv_min, iv_max): ([u32; 6], [u32; 6]) = match nat.id() {
         4 => ([27, 29, 29, 29, 0, 25], [31, 31, 31, 31, 31, 25]), // Naughty
@@ -197,7 +327,11 @@ async fn tepig_search_by_dates(
         any => return Err(SearchError::UnsupportedNature(any)),
     };
 
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
+    check_cancelled(cancellation)?;
+    let ctx = match runtime {
+        Some(runtime) => runtime.context(workgroup_size)?,
+        None => GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?,
+    };
     let params = GpuInputParams::new(config, [0, 23], [0, 59], [0, 59], 16, iv_min, iv_max);
     let iv_cfgs = [
         GpuIvConfig {
@@ -215,40 +349,84 @@ async fn tepig_search_by_dates(
     ];
 
     for date_batch in dates.chunks(batch_size) {
+        if check_cancelled(cancellation).is_err() {
+            break;
+        }
         let base_results = run_result_base_seedhigh_by_dates_multi_iv(
             &ctx, config, &params, date_batch, batch_size, &iv_cfgs,
         )
         .await;
         if let Some(handle) = pending_cpu.take() {
-            let batch_results = handle.join().map_err(|_| SearchError::WorkerPanicked)?;
-            merge_results(batch_results, &mut results, &mut seen_seed0);
+            completed.join(handle, cancellation)?;
         }
+        check_cancelled(cancellation)?;
         let base_results = base_results?;
         let nat_clone = nat.clone();
+        let worker_cancellation = cancellation.cloned();
         pending_cpu = Some(
             thread::Builder::new()
-                .spawn(move || process_base_results(base_results, mode, nat_clone, find_grotto))
+                .spawn(move || {
+                    process_base_results(
+                        base_results,
+                        mode,
+                        nat_clone,
+                        find_grotto,
+                        worker_cancellation.as_ref(),
+                    )
+                })
                 .map_err(SearchError::WorkerStart)?,
         );
     }
     if let Some(handle) = pending_cpu.take() {
-        let batch_results = handle.join().map_err(|_| SearchError::WorkerPanicked)?;
-        merge_results(batch_results, &mut results, &mut seen_seed0);
+        completed.join(handle, cancellation)?;
     }
 
-    Ok(results)
+    check_cancelled(cancellation)?;
+    Ok(completed.results)
 }
 
-fn merge_results(
-    batch_results: Vec<TepigSearchResult>,
-    results: &mut Vec<TepigSearchResult>,
-    seen_seed0: &mut HashSet<u64>,
-) {
-    for candidate in batch_results {
-        if !seen_seed0.insert(candidate.seed0) {
-            continue;
+struct CompletedTepigBatches<'a> {
+    results: Vec<TepigSearchResult>,
+    seen_seed0: HashSet<u64>,
+    progress: TepigSearchProgress,
+    on_progress: Option<&'a mut (dyn FnMut(TepigSearchProgress) + Send)>,
+}
+
+impl<'a> CompletedTepigBatches<'a> {
+    fn new(
+        total_batches: usize,
+        on_progress: Option<&'a mut (dyn FnMut(TepigSearchProgress) + Send)>,
+    ) -> Self {
+        Self {
+            results: Vec::new(),
+            seen_seed0: HashSet::new(),
+            progress: TepigSearchProgress {
+                completed_batches: 0,
+                total_batches,
+                unique_results: 0,
+            },
+            on_progress,
         }
-        results.push(candidate);
+    }
+
+    fn join(
+        &mut self,
+        worker: thread::JoinHandle<Vec<TepigSearchResult>>,
+        cancellation: Option<&TepigSearchCancellation>,
+    ) -> Result<(), SearchError> {
+        let batch_results = worker.join().map_err(|_| SearchError::WorkerPanicked)?;
+        check_cancelled(cancellation)?;
+        for candidate in batch_results {
+            if self.seen_seed0.insert(candidate.seed0) {
+                self.results.push(candidate);
+            }
+        }
+        self.progress.completed_batches += 1;
+        self.progress.unique_results = self.results.len();
+        if let Some(on_progress) = &mut self.on_progress {
+            on_progress(self.progress);
+        }
+        Ok(())
     }
 }
 
@@ -257,9 +435,18 @@ fn process_base_results(
     mode: BW2Mode,
     nat: Nature,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
+    cancellation: Option<&TepigSearchCancellation>,
 ) -> Vec<TepigSearchResult> {
     base_results
         .into_par_iter()
+        .map(|base| {
+            if check_cancelled(cancellation).is_err() {
+                None
+            } else {
+                Some(base)
+            }
+        })
+        .while_some()
         .filter_map(|base| {
             let seed0 = base.seed0;
             let seed1 = base.seed1;
@@ -485,15 +672,143 @@ mod tests {
     use super::*;
     use std::time::Instant;
 
-    #[test]
-    fn rejects_invalid_conditions_before_gpu_setup() {
-        let config = DSConfig::new(
+    fn test_config() -> DSConfig {
+        DSConfig::new(
             rng_core::models::GameVersion::White2,
             rng_core::models::Region::JPN,
             0x10fa,
             false,
             0x0009bf6d93ce,
+        )
+    }
+
+    #[test]
+    fn cancelled_search_exits_before_gpu_setup() {
+        let cancellation = TepigSearchCancellation::default();
+        cancellation.clone().cancel();
+        let request = TepigSearchRequest {
+            config: test_config(),
+            date: GameDate::try_new(26, 3, 1).unwrap(),
+            nature: Nature::new(4),
+            mode: BW2Mode::Normal,
+            workgroup_size: W256,
+        };
+        assert!(matches!(
+            pollster::block_on(request.run_with_control(None, &cancellation, |_| {
+                panic!("a cancelled search cannot complete a batch")
+            })),
+            Err(SearchError::Cancelled)
+        ));
+    }
+
+    fn result_with_seed(seed0: u64) -> TepigSearchResult {
+        TepigSearchResult {
+            seed0,
+            seed1: 0,
+            year: 26,
+            month: 3,
+            day: 1,
+            hour: 0,
+            minute: 0,
+            second: 0,
+            tid: 0,
+            key_presses: String::new(),
+            ivs: [0; 6],
+            tepig_iv_step: 16,
+            tepig_frames: Vec::new(),
+            candy_frames: Vec::new(),
+            pidove_frames: Vec::new(),
+            psyduck_frames: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn progress_counts_unique_results_across_completed_batches() {
+        let mut updates = Vec::new();
+        let mut record = |progress| updates.push(progress);
+        let mut completed = CompletedTepigBatches::new(3, Some(&mut record));
+        completed
+            .join(
+                thread::spawn(|| vec![result_with_seed(1), result_with_seed(1)]),
+                None,
+            )
+            .unwrap();
+        completed
+            .join(
+                thread::spawn(|| vec![result_with_seed(1), result_with_seed(2)]),
+                None,
+            )
+            .unwrap();
+        completed.join(thread::spawn(Vec::new), None).unwrap();
+        assert_eq!(
+            updates,
+            [
+                TepigSearchProgress {
+                    completed_batches: 1,
+                    total_batches: 3,
+                    unique_results: 1,
+                },
+                TepigSearchProgress {
+                    completed_batches: 2,
+                    total_batches: 3,
+                    unique_results: 2,
+                },
+                TepigSearchProgress {
+                    completed_batches: 3,
+                    total_batches: 3,
+                    unique_results: 2,
+                },
+            ]
         );
+    }
+
+    #[test]
+    fn cancellation_joins_worker_before_returning() {
+        let cancellation = TepigSearchCancellation::default();
+        let worker_cancellation = cancellation.clone();
+        let worker = thread::spawn(move || {
+            worker_cancellation.cancel();
+            vec![result_with_seed(1)]
+        });
+        let mut record = |_| panic!("a cancelled batch cannot report completion");
+        let mut completed = CompletedTepigBatches::new(1, Some(&mut record));
+        assert!(matches!(
+            completed.join(worker, Some(&cancellation)),
+            Err(SearchError::Cancelled)
+        ));
+        assert!(completed.results.is_empty());
+    }
+
+    #[test]
+    fn cancelled_cpu_batch_skips_candidate_processing() {
+        use rng_core::models::{GameTime, KeyPresses};
+        use rng_core::result_base::ResultBase;
+
+        let cancellation = TepigSearchCancellation::default();
+        cancellation.cancel();
+        let base = ResultBase {
+            ds_config: test_config(),
+            seed0: 1,
+            seed1: 2,
+            game_time: GameTime::try_new(26, 3, 1, 0, 0, 0).unwrap(),
+            key_presses: KeyPresses::new(0x2fff),
+            ivs: [0; 6],
+        };
+        assert!(
+            process_base_results(
+                vec![base; 8],
+                BW2Mode::Normal,
+                Nature::new(4),
+                |_, _, _| panic!("cancelled candidates cannot reach filtering"),
+                Some(&cancellation),
+            )
+            .is_empty()
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_conditions_before_gpu_setup() {
+        let config = test_config();
         let search = |year, month, day, nature| {
             pollster::block_on(white2_tepig_search(
                 config,
