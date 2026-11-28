@@ -1,13 +1,13 @@
 use crate::SearchError;
-use infra::gpu::context::GpuContext;
-use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
-use rng_core::gpu::workgroup_size::WorkgroupSize;
 use rng_core::lcg::OffsetType;
 use rng_core::lcg::cloud_impl::find_cloud_exists_advances;
 use rng_core::lcg::cloud_impl::find_cloud_poke_advances;
 use rng_core::lcg::nature::Nature;
 use rng_core::models::KeyPresses;
 use rng_core::result_base::ResultBase;
+use rng_gpu::context::GpuContext;
+use rng_gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
+use rng_gpu::workgroup_size::WorkgroupSize;
 
 static GOOD_DATES: &[&[u32]] = &[
     &[], // 0月 存在しないため空白
@@ -184,10 +184,8 @@ fn is_target_drilbur(poke: &rng_core::lcg::wild_poke::WildPoke) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use rng_core::{
-        gpu::workgroup_size::WorkgroupSize::W256,
-        models::{DSConfig, GameVersion},
-    };
+    use rng_core::models::{DSConfig, GameVersion};
+    use rng_gpu::workgroup_size::WorkgroupSize::W256;
     use std::time::Instant;
 
     use super::*;

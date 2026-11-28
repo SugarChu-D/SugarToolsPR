@@ -2,17 +2,17 @@ use crate::SearchError;
 use std::collections::HashSet;
 use std::thread;
 
-use infra::gpu::context::GpuContext;
 use rayon::prelude::*;
-use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates_multi_iv};
-use rng_core::gpu::input_layout::GpuIvConfig;
-use rng_core::gpu::workgroup_size::WorkgroupSize;
 use rng_core::lcg::grotto::Grottos;
 use rng_core::lcg::nature::Nature;
 use rng_core::lcg::wild_poke::WildPoke;
 use rng_core::lcg::{Lcg, OffsetType};
 use rng_core::models::DSConfig;
 use rng_core::models::game_date::{GameDate, build_autumn_and_winter};
+use rng_gpu::context::GpuContext;
+use rng_gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates_multi_iv};
+use rng_gpu::input_layout::GpuIvConfig;
+use rng_gpu::workgroup_size::WorkgroupSize;
 
 #[derive(Debug, Clone)]
 pub struct W2SnivySearchResult {
@@ -374,7 +374,7 @@ impl W2SnivySearchResult {
 
 #[cfg(test)]
 mod tests {
-    use rng_core::gpu::workgroup_size::WorkgroupSize::W256;
+    use rng_gpu::workgroup_size::WorkgroupSize::W256;
 
     use super::*;
     use std::time::Instant;

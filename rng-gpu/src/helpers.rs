@@ -1,14 +1,14 @@
 use super::error::GpuResultError;
-use crate::gpu::input_layout::{GpuInput, GpuIvConfig};
-use crate::gpu::mt_kernel;
-use crate::gpu::sha1_kernel;
-use crate::gpu::staging_layout::candidate_game_time;
-use crate::lcg::lcg_next;
-use crate::models::game_date::GameDate;
-use crate::models::{DSConfig, KeyPresses};
-use crate::mt;
-use crate::result_base::ResultBase;
-use infra::gpu::readback::ReadbackError;
+use crate::input_layout::{GpuInput, GpuIvConfig};
+use crate::mt_kernel;
+use crate::readback::ReadbackError;
+use crate::sha1_kernel;
+use crate::staging_layout::candidate_game_time;
+use rng_core::lcg::lcg_next;
+use rng_core::models::game_date::GameDate;
+use rng_core::models::{DSConfig, KeyPresses};
+use rng_core::mt;
+use rng_core::result_base::ResultBase;
 
 #[derive(Clone, Copy)]
 pub struct GpuInputParams {
@@ -82,11 +82,11 @@ impl GpuInputParams {
 }
 
 pub async fn run_sha1_mt_by_dates(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     params: &GpuInputParams,
     dates: &[GameDate],
     batch_size: usize,
-) -> Result<Vec<crate::gpu::staging_layout::GpuCandidate>, ReadbackError> {
+) -> Result<Vec<crate::staging_layout::GpuCandidate>, ReadbackError> {
     if dates.is_empty() {
         return Ok(Vec::new());
     }
@@ -111,7 +111,7 @@ pub async fn run_sha1_mt_by_dates(
 }
 
 pub async fn run_result_base_by_dates(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     ds_config: DSConfig,
     params: &GpuInputParams,
     dates: &[GameDate],
@@ -122,7 +122,7 @@ pub async fn run_result_base_by_dates(
 }
 
 pub async fn run_result_base_seedhigh_by_dates(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     ds_config: DSConfig,
     params: &GpuInputParams,
     dates: &[GameDate],
@@ -171,7 +171,7 @@ pub async fn run_result_base_seedhigh_by_dates(
 }
 
 pub async fn run_result_base_seedhigh_by_dates_multi_iv(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     ds_config: DSConfig,
     params: &GpuInputParams,
     dates: &[GameDate],
@@ -219,7 +219,7 @@ pub async fn run_result_base_seedhigh_by_dates_multi_iv(
 
 fn build_result_base_from_candidates(
     ds_config: DSConfig,
-    candidates: Vec<crate::gpu::staging_layout::GpuCandidate>,
+    candidates: Vec<crate::staging_layout::GpuCandidate>,
     iv_step: u32,
 ) -> Result<Vec<ResultBase>, GpuResultError> {
     let mut results = Vec::with_capacity(candidates.len());

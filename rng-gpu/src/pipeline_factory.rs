@@ -70,7 +70,7 @@ mod tests {
     use std::borrow::Cow;
 
     use super::*;
-    use crate::gpu::context::GpuContext;
+    use crate::context::GpuContext;
 
     #[test]
     #[ignore = "requires a GPU adapter"]

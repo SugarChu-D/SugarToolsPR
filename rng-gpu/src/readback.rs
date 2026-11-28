@@ -2,7 +2,7 @@ use bytemuck::Pod;
 
 use super::context::GpuContext;
 
-pub use super::error::ReadbackError;
+pub use super::device_error::ReadbackError;
 
 pub struct Readback<'a> {
     device: &'a wgpu::Device,

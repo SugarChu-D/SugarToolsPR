@@ -1,5 +1,5 @@
-use crate::models::date_time_error::DateTimeError;
-use infra::gpu::readback::ReadbackError;
+use crate::readback::ReadbackError;
+use rng_core::models::date_time_error::DateTimeError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum GpuResultError {

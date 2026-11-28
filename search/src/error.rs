@@ -7,9 +7,9 @@ pub enum SearchError {
     #[error("Unsupported Tepig nature {0} (expected Naughty or Rash)")]
     UnsupportedNature(u8),
     #[error(transparent)]
-    GpuInitialization(#[from] infra::gpu::context::GpuInitError),
+    GpuInitialization(#[from] rng_gpu::context::GpuInitError),
     #[error(transparent)]
-    GpuExecution(#[from] rng_core::gpu::error::GpuResultError),
+    GpuExecution(#[from] rng_gpu::error::GpuResultError),
     #[error("Failed to start CPU worker: {0}")]
     WorkerStart(#[source] std::io::Error),
     #[error("CPU worker thread panicked")]

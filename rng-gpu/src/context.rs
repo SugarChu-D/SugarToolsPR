@@ -1,4 +1,4 @@
-pub use super::error::GpuInitError;
+pub use super::device_error::GpuInitError;
 
 pub const DEFAULT_WORKGROUP_SIZE: u32 = 256;
 
