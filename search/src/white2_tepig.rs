@@ -14,21 +14,21 @@ use rng_core::lcg::grotto::Grottos;
 use rng_core::lcg::nature::Nature;
 use rng_core::lcg::wild_poke::WildPoke;
 use rng_core::lcg::{Lcg, OffsetType};
-use rng_core::models::DSConfig;
 use rng_core::models::game_date::{GameDate, build_date_except_summer};
+use rng_core::models::{DSConfig, GameTime, KeyPresses};
 
+/// White 2 Tepig and Dragonite search result.
+///
+/// The former date and time fields are available through `game_time`
+/// (for example, `result.game_time.year()`). Use
+/// `result.key_presses.pressed_keys_string()` to obtain the displayed key names.
 #[derive(Debug, Clone)]
 pub struct TepigSearchResult {
     pub seed0: u64,
     pub seed1: u64,
-    pub year: u8,
-    pub month: u8,
-    pub day: u8,
-    pub hour: u8,
-    pub minute: u8,
-    pub second: u8,
+    pub game_time: GameTime,
     pub tid: u16,
-    pub key_presses: String,
+    pub key_presses: KeyPresses,
     pub ivs: [u8; 6],
     pub tepig_iv_step: u8,
     pub tepig_frames: Vec<u32>,
@@ -518,14 +518,9 @@ fn process_base_results(
             Some(TepigSearchResult {
                 seed0,
                 seed1,
-                year: base.game_time.year(),
-                month: base.game_time.month(),
-                day: base.game_time.day(),
-                hour: base.game_time.hour(),
-                minute: base.game_time.minute(),
-                second: base.game_time.second(),
+                game_time: base.game_time,
                 tid,
-                key_presses: base.key_presses.pressed_keys_string(),
+                key_presses: base.key_presses,
                 ivs,
                 tepig_iv_step: tepig_iv_frame,
                 tepig_frames,
@@ -628,7 +623,13 @@ impl TepigSearchResult {
         println!("seed0: {:016X} seed1: {:016X} ", self.seed0, self.seed1,);
         println!(
             "date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key={}",
-            self.year, self.month, self.day, self.hour, self.minute, self.second, self.key_presses,
+            self.game_time.year(),
+            self.game_time.month(),
+            self.game_time.day(),
+            self.game_time.hour(),
+            self.game_time.minute(),
+            self.game_time.second(),
+            self.key_presses.pressed_keys_string(),
         );
         println!("TID: {} Pass: {}", self.tid, get_frigate_pass(self.tid));
         println!("ivs={:?} iv_step={}", self.ivs, self.tepig_iv_step);
@@ -705,14 +706,9 @@ mod tests {
         TepigSearchResult {
             seed0,
             seed1: 0,
-            year: 26,
-            month: 3,
-            day: 1,
-            hour: 0,
-            minute: 0,
-            second: 0,
+            game_time: GameTime::try_new(26, 3, 1, 0, 0, 0).unwrap(),
             tid: 0,
-            key_presses: String::new(),
+            key_presses: KeyPresses::new(0x2fff),
             ivs: [0; 6],
             tepig_iv_step: 16,
             tepig_frames: Vec::new(),
@@ -781,7 +777,6 @@ mod tests {
 
     #[test]
     fn cancelled_cpu_batch_skips_candidate_processing() {
-        use rng_core::models::{GameTime, KeyPresses};
         use rng_core::result_base::ResultBase;
 
         let cancellation = TepigSearchCancellation::default();
@@ -840,18 +835,12 @@ mod tests {
             (result.seed0, result.seed1),
             (0x6f97_208f_419e_56e2, 0x0efb_17c8_584b_d7ed)
         );
+        assert_eq!(result.game_time, game_time);
+        assert_eq!(result.key_presses, key_presses);
         assert_eq!(
-            (
-                result.year,
-                result.month,
-                result.day,
-                result.hour,
-                result.minute,
-                result.second
-            ),
-            (33, 8, 27, 3, 56, 29)
+            result.key_presses.pressed_keys_string(),
+            "[A][Y][↑][←][R][St]"
         );
-        assert_eq!(result.key_presses, "[A][Y][↑][←][R][St]");
         assert_eq!(result.tid, 60050);
         assert_eq!(
             (result.tepig_iv_step, result.ivs),

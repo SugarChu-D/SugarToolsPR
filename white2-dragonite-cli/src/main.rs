@@ -125,7 +125,13 @@ fn build_text(results: &[TepigSearchResult]) -> String {
         ));
         out.push_str(&format!(
             "date: {:02}/{:02}/{:02} {:02}:{:02}:{:02} key: {}\n",
-            r.year, r.month, r.day, r.hour, r.minute, r.second, r.key_presses
+            r.game_time.year(),
+            r.game_time.month(),
+            r.game_time.day(),
+            r.game_time.hour(),
+            r.game_time.minute(),
+            r.game_time.second(),
+            r.key_presses.pressed_keys_string()
         ));
         out.push_str(&format!(
             "TID: {} Frigate: {}\n",
