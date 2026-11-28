@@ -36,46 +36,85 @@ pub struct VersionConfig {
     pub vcount: u32,
 }
 
-impl VersionConfig {
-    pub fn from_version(version: GameVersion, region: Region) -> Self {
-        let version_name = version.to_string();
-        let region_name = region.to_string();
-        let row = include_str!("params/nazo_vcount.csv")
-            .lines()
-            .skip(1)
-            .find(|line| {
-                let mut fields = line.split(',');
-                fields.next() == Some(version_name.as_str())
-                    && fields.next() == Some(region_name.as_str())
-            })
-            .unwrap_or_else(|| {
-                panic!("missing nazo_vcount.csv row for {version_name}/{region_name}")
-            });
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VersionConfigError {
+    Missing {
+        version: GameVersion,
+        region: Region,
+    },
+    Invalid {
+        version: GameVersion,
+        region: Region,
+    },
+}
 
-        let mut fields = row.split(',');
-        fields.next();
-        fields.next();
-        let nazo_values = NazoValues {
-            nazo1: parse_hex_field(fields.next()),
-            nazo2: parse_hex_field(fields.next()),
-            nazo3: parse_hex_field(fields.next()),
-            nazo4: parse_hex_field(fields.next()),
-            nazo5: parse_hex_field(fields.next()),
-        };
-        let vcount = parse_hex_field(fields.next());
-
-        Self {
-            game_version: version,
-            nazo_values,
-            vcount,
+impl std::fmt::Display for VersionConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Missing { version, region } => {
+                write!(f, "missing parameters for {version}/{region}")
+            }
+            Self::Invalid { version, region } => {
+                write!(f, "invalid parameters for {version}/{region}")
+            }
         }
     }
 }
 
-fn parse_hex_field(field: Option<&str>) -> u32 {
-    let field = field.expect("missing field in nazo_vcount.csv").trim();
-    let digits = field.strip_prefix("0x").unwrap_or(field);
-    u32::from_str_radix(digits, 16).expect("invalid hexadecimal field in nazo_vcount.csv")
+impl std::error::Error for VersionConfigError {}
+
+impl VersionConfig {
+    pub fn from_version(version: GameVersion, region: Region) -> Self {
+        Self::try_from_version(version, region).unwrap_or_else(|error| panic!("{error}"))
+    }
+
+    pub fn try_from_version(
+        version: GameVersion,
+        region: Region,
+    ) -> Result<Self, VersionConfigError> {
+        Self::from_csv(include_str!("params/nazo_vcount.csv"), version, region)
+    }
+
+    fn from_csv(
+        csv: &str,
+        version: GameVersion,
+        region: Region,
+    ) -> Result<Self, VersionConfigError> {
+        let version_name = version.to_string();
+        let region_name = region.to_string();
+        let mut fields = csv
+            .lines()
+            .skip(1)
+            .map(|line| line.split(','))
+            .find(|fields| {
+                let mut fields = fields.clone();
+                fields.next() == Some(version_name.as_str())
+                    && fields.next() == Some(region_name.as_str())
+            })
+            .ok_or(VersionConfigError::Missing { version, region })?
+            .skip(2);
+
+        let mut next_value = || {
+            let field = fields.next().map(str::trim).unwrap_or_default();
+            let digits = field.strip_prefix("0x").unwrap_or(field);
+            u32::from_str_radix(digits, 16)
+                .map_err(|_| VersionConfigError::Invalid { version, region })
+        };
+        let nazo_values = NazoValues {
+            nazo1: next_value()?,
+            nazo2: next_value()?,
+            nazo3: next_value()?,
+            nazo4: next_value()?,
+            nazo5: next_value()?,
+        };
+        let vcount = next_value()?;
+
+        Ok(Self {
+            game_version: version,
+            nazo_values,
+            vcount,
+        })
+    }
 }
 
 impl std::fmt::Display for GameVersion {
@@ -106,6 +145,20 @@ impl std::fmt::Display for Region {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reports_missing_and_invalid_version_parameters() {
+        let version = GameVersion::White2;
+        let region = Region::USA;
+        assert!(matches!(
+            VersionConfig::from_csv("header", version, region),
+            Err(VersionConfigError::Missing { .. })
+        ));
+        assert!(matches!(
+            VersionConfig::from_csv("header\nWhite2,USA,invalid", version, region),
+            Err(VersionConfigError::Invalid { .. })
+        ));
+    }
 
     #[test]
     fn loads_version_config_from_csv() {
