@@ -1,3 +1,4 @@
+use crate::SearchError;
 use infra::gpu::context::GpuContext;
 use rng_core::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
 use rng_core::gpu::workgroup_size::WorkgroupSize;
@@ -57,9 +58,9 @@ const BATCH_DATES: usize = 256;
 pub async fn drilbur_search(
     ds_config: rng_core::models::DSConfig,
     workgroup_size: WorkgroupSize,
-) -> Vec<DrilburSearchResult> {
+) -> Result<Vec<DrilburSearchResult>, SearchError> {
     let batch_size = BATCH_DATES;
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
     let mut results = Vec::new();
     let mut seen_seed0: std::collections::HashSet<u64> = std::collections::HashSet::new();
 
@@ -75,11 +76,9 @@ pub async fn drilbur_search(
                 continue; // 夏月は対象外
             }
             for day in GOOD_DATES[month as usize] {
-                dates.push(rng_core::models::game_date::GameDate {
-                    year,
-                    month,
-                    day: *day as u8,
-                });
+                dates.push(rng_core::models::game_date::GameDate::try_new(
+                    year, month, *day as u8,
+                )?);
                 if dates.len() >= batch_size {
                     collect_gpu_results(
                         &ctx,
@@ -90,7 +89,7 @@ pub async fn drilbur_search(
                         &mut seen_seed0,
                         batch_size,
                     )
-                    .await;
+                    .await?;
                     dates.clear();
                 }
             }
@@ -107,10 +106,10 @@ pub async fn drilbur_search(
             &mut seen_seed0,
             batch_size,
         )
-        .await;
+        .await?;
     }
 
-    results
+    Ok(results)
 }
 
 async fn collect_gpu_results(
@@ -121,15 +120,9 @@ async fn collect_gpu_results(
     results: &mut Vec<DrilburSearchResult>,
     seen_seed0: &mut std::collections::HashSet<u64>,
     batch_size: usize,
-) {
+) -> Result<(), SearchError> {
     let base_results =
-        match run_result_base_seedhigh_by_dates(ctx, ds_config, params, dates, batch_size).await {
-            Ok(res) => res,
-            Err(e) => {
-                eprintln!("Error running GPU search: {:?}", e);
-                return;
-            }
-        };
+        run_result_base_seedhigh_by_dates(ctx, ds_config, params, dates, batch_size).await?;
 
     for base in base_results.into_iter() {
         let ResultBase {
@@ -165,18 +158,19 @@ async fn collect_gpu_results(
         results.push(DrilburSearchResult {
             seed0,
             seed1,
-            year: game_time.year as u16,
-            month: game_time.month,
-            day: game_time.day,
-            hour: game_time.hour,
-            minute: game_time.minute,
-            second: game_time.second,
+            year: game_time.year() as u16,
+            month: game_time.month(),
+            day: game_time.day(),
+            hour: game_time.hour(),
+            minute: game_time.minute(),
+            second: game_time.second(),
             key_presses,
             ivs,
             cloud_advances,
             wild_advances,
         });
     }
+    Ok(())
 }
 
 fn is_target_drilbur(poke: &rng_core::lcg::wild_poke::WildPoke) -> bool {
@@ -210,7 +204,8 @@ mod tests {
         };
 
         let start = Instant::now();
-        let results = pollster::block_on(async { drilbur_search(ds_config, W256).await });
+        let results = pollster::block_on(async { drilbur_search(ds_config, W256).await })
+            .expect("search failed");
         let elapsed = start.elapsed();
         println!("Elapsed: {:?}", elapsed);
         println!("Total results: {}", results.len());

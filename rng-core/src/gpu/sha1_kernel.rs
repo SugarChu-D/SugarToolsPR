@@ -3,6 +3,7 @@ use infra::gpu::buffer_pool::{BufferKind, BufferPool};
 use infra::gpu::encoder_utils::EncoderUtils;
 use infra::gpu::pipeline_factory::PipelineFactory;
 use infra::gpu::readback::Readback;
+use infra::gpu::readback::ReadbackError;
 use infra::gpu::shader_loader::ShaderLoader;
 use wgpu::util::DeviceExt;
 
@@ -57,7 +58,7 @@ struct ListDispatchParams {
 pub async fn run_sha1(
     ctx: &infra::gpu::context::GpuContext,
     input: &[GpuInput],
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
+) -> Result<Vec<GpuCandidate>, ReadbackError> {
     if input.is_empty() {
         return Ok(Vec::new());
     }
@@ -202,7 +203,7 @@ pub async fn run_sha1(
 pub async fn run_sha1_mt(
     ctx: &infra::gpu::context::GpuContext,
     input: &[GpuInput],
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
+) -> Result<Vec<GpuCandidate>, ReadbackError> {
     if input.is_empty() {
         return Ok(Vec::new());
     }
@@ -374,7 +375,7 @@ pub async fn run_sha1_seedhigh_filter(
     ctx: &infra::gpu::context::GpuContext,
     input: &[GpuInput],
     seed_high_list: &[u32],
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
+) -> Result<Vec<GpuCandidate>, ReadbackError> {
     let keypress_list: Vec<u32> = KeyPresses::iter_valid().map(|k| k.raw() as u32).collect();
     let keypress_count = keypress_list.len() as u32;
     if keypress_count == 0 {
@@ -585,7 +586,7 @@ pub async fn run_sha1_seedhigh_search(
     iv_min: [u32; 6],
     iv_max: [u32; 6],
     batch_days: usize,
-) -> Result<Vec<GpuCandidate>, wgpu::BufferAsyncError> {
+) -> Result<Vec<GpuCandidate>, ReadbackError> {
     let cfg = GpuIvConfig {
         iv_step,
         _pad0: 0,
@@ -646,7 +647,7 @@ mod tests {
     #[ignore = "requires a GPU and scans the full seed_high range"]
     fn seedhigh_candidates_match_cpu_for_known_seed0() {
         use crate::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
-        use crate::models::{GameTime, Region, game_date::GameDate};
+        use crate::models::{GameTime, Region};
         use crate::mt::mt_0;
         use crate::sha_1::generate_initial_seed0;
 
@@ -658,7 +659,7 @@ mod tests {
             false,
             0x0009_bf6d_93ce,
         );
-        let time = GameTime::new(63, 10, 1, 18, 39, 19);
+        let time = GameTime::try_new(63, 10, 1, 18, 39, 19).unwrap();
         let known_seed0 = 0x416B_FDD6_B147_33D2;
         let iv_step = 2;
         let target_ivs = mt_0(known_seed0, iv_step);
@@ -675,16 +676,16 @@ mod tests {
         let target = target_ivs.map(u32::from);
         let params = GpuInputParams::new(
             config,
-            [u32::from(time.hour); 2],
-            [u32::from(time.minute); 2],
-            [u32::from(time.second); 2],
+            [u32::from(time.hour()); 2],
+            [u32::from(time.minute()); 2],
+            [u32::from(time.second()); 2],
             u32::from(iv_step),
             target,
             target,
         );
-        let date = GameDate::new(time.year, time.month, time.day);
+        let date = time.date();
         let candidates = pollster::block_on(async {
-            let ctx = GpuContext::new().await;
+            let ctx = GpuContext::new().await.expect("GPU setup failed");
             run_result_base_seedhigh_by_dates(&ctx, config, &params, &[date], 1).await
         })
         .expect("GPU candidate search failed");
@@ -702,7 +703,7 @@ mod tests {
     #[ignore]
     fn test_sha1_mt_matches_cpu_single_case() {
         pollster::block_on(async {
-            let ctx = GpuContext::new().await;
+            let ctx = GpuContext::new().await.expect("GPU setup failed");
             let start = std::time::Instant::now();
 
             let ds_config = DSConfig::new(
@@ -770,7 +771,7 @@ mod tests {
     #[ignore]
     fn test_sha1_seedhigh_search_smoke() {
         pollster::block_on(async {
-            let ctx = GpuContext::new().await;
+            let ctx = GpuContext::new().await.expect("GPU setup failed");
             let ds_config = DSConfig::new(
                 GameVersion::White2,
                 crate::models::Region::JPN,

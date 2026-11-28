@@ -1,3 +1,4 @@
+use crate::SearchError;
 use std::collections::HashSet;
 
 use infra::gpu::context::GpuContext;
@@ -33,9 +34,9 @@ pub async fn pup_search(
     ds_config: DSConfig,
     wild_max_advances: u32,
     workgroup_size: WorkgroupSize,
-) -> Vec<PupSearchResult> {
+) -> Result<Vec<PupSearchResult>, SearchError> {
     let batch_size = BATCH_DATES;
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
 
@@ -47,7 +48,7 @@ pub async fn pup_search(
     let mut dates = Vec::with_capacity(batch_size);
     for &(month, day) in &TARGET_DATES {
         for year in 0..=99u8 {
-            dates.push(GameDate { year, month, day });
+            dates.push(GameDate::try_new(year, month, day)?);
             if dates.len() >= batch_size {
                 collect_gpu_results(
                     &ctx,
@@ -61,7 +62,7 @@ pub async fn pup_search(
                     &is_target_pup,
                     batch_size,
                 )
-                .await;
+                .await?;
                 dates.clear();
             }
         }
@@ -79,10 +80,10 @@ pub async fn pup_search(
             &is_target_pup,
             batch_size,
         )
-        .await;
+        .await?;
     }
 
-    results
+    Ok(results)
 }
 
 pub async fn sawk_search(
@@ -91,9 +92,9 @@ pub async fn sawk_search(
     wild_max_advances: u32,
     iv_step: u32,
     workgroup_size: WorkgroupSize,
-) -> Vec<PupSearchResult> {
+) -> Result<Vec<PupSearchResult>, SearchError> {
     let batch_size = BATCH_DATES;
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
 
@@ -114,13 +115,13 @@ pub async fn sawk_search(
 
     for temp_month in 1..=3 {
         let month = temp_month * 4;
-        for day in 1..=31 {
+        for day in 1..=GameDate::try_new(0, month, 1)?.days_in_month() {
             // let temp_date = (month, day);
             // let is_not_hail_date = !HAIL_DATES.contains(&temp_date);
             let is_not_hail_date = true;
             if is_not_hail_date {
                 for year in 0..=99u8 {
-                    dates.push(GameDate { year, month, day });
+                    dates.push(GameDate::try_new(year, month, day)?);
                     if dates.len() >= batch_size {
                         collect_gpu_results(
                             &ctx,
@@ -134,7 +135,7 @@ pub async fn sawk_search(
                             &is_target_sawk,
                             batch_size,
                         )
-                        .await;
+                        .await?;
                         dates.clear();
                     }
                 }
@@ -154,10 +155,10 @@ pub async fn sawk_search(
             &is_target_sawk,
             batch_size,
         )
-        .await;
+        .await?;
     }
 
-    results
+    Ok(results)
 }
 
 #[expect(
@@ -175,12 +176,9 @@ async fn collect_gpu_results(
     seen_seed0: &mut HashSet<u64>,
     is_target: &dyn Fn(&WildPoke) -> bool,
     batch_size: usize,
-) {
+) -> Result<(), SearchError> {
     let base_results =
-        match run_result_base_seedhigh_by_dates(ctx, ds_config, params, dates, batch_size).await {
-            Ok(v) => v,
-            Err(_) => return,
-        };
+        run_result_base_seedhigh_by_dates(ctx, ds_config, params, dates, batch_size).await?;
 
     for base in base_results.into_iter() {
         let ResultBase {
@@ -203,17 +201,18 @@ async fn collect_gpu_results(
         results.push(PupSearchResult {
             seed0,
             seed1,
-            year: game_time.year as u16,
-            month: game_time.month,
-            day: game_time.day,
-            hour: game_time.hour,
-            minute: game_time.minute,
-            second: game_time.second,
+            year: game_time.year() as u16,
+            month: game_time.month(),
+            day: game_time.day(),
+            hour: game_time.hour(),
+            minute: game_time.minute(),
+            second: game_time.second(),
             key_presses,
             ivs,
             wild_advances,
         });
     }
+    Ok(())
 }
 
 fn is_target_pup(pup: &WildPoke) -> bool {
@@ -252,7 +251,8 @@ mod tests {
         };
         let start = Instant::now();
         let results =
-            pollster::block_on(async { pup_search(ds_config, 70, WorkgroupSize::W256).await });
+            pollster::block_on(async { pup_search(ds_config, 70, WorkgroupSize::W256).await })
+                .expect("search failed");
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);
@@ -288,7 +288,8 @@ mod tests {
         let start = Instant::now();
         let results = pollster::block_on(async {
             sawk_search(ds_config, 30, 100, 0, WorkgroupSize::W256).await
-        });
+        })
+        .expect("search failed");
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);

@@ -1,4 +1,4 @@
-use core::panic;
+use crate::SearchError;
 use std::collections::HashSet;
 use std::thread;
 
@@ -82,7 +82,7 @@ fn tepig_iv_check(ivs: [u8; 6], nat: &Nature) -> bool {
     match nat.id() {
         4 => tepig_iv_check_naughty(ivs),
         19 => tepig_iv_check_rash(ivs),
-        any => panic!("Invalid Nature: {}", any),
+        _ => false,
     }
 }
 
@@ -93,7 +93,7 @@ pub async fn white2_tepig_dragonite_search(
     nat: Nature,
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
-) -> Vec<TepigSearchResult> {
+) -> Result<Vec<TepigSearchResult>, SearchError> {
     let dates = build_date_except_summer();
     tepig_search_by_dates(
         config,
@@ -114,16 +114,12 @@ pub async fn white2_tepig_search(
     nat: Nature,
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
-) -> Vec<TepigSearchResult> {
-    if year >= 100 || month > 12 || day > 31 {
-        panic!("Invalid Date!")
-    };
-
+) -> Result<Vec<TepigSearchResult>, SearchError> {
+    let date = GameDate::try_new(year, month, day)?;
     if month % 4 == 2 {
-        panic!("SUMMER MONTH!")
-    };
-
-    let dates = [GameDate { year, month, day }];
+        return Err(SearchError::SummerMonth(month));
+    }
+    let dates = [date];
     tepig_search_by_dates(
         config,
         nat,
@@ -142,9 +138,8 @@ async fn tepig_search_by_dates(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
-) -> Vec<TepigSearchResult> {
+) -> Result<Vec<TepigSearchResult>, SearchError> {
     let batch_size = BATCH_DATES;
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await;
     let mut results = Vec::new();
     let mut seen_seed0: HashSet<u64> = HashSet::new();
     let mut pending_cpu: Option<thread::JoinHandle<Vec<TepigSearchResult>>> = None;
@@ -152,9 +147,10 @@ async fn tepig_search_by_dates(
     let (iv_min, iv_max): ([u32; 6], [u32; 6]) = match nat.id() {
         4 => ([27, 29, 29, 29, 0, 25], [31, 31, 31, 31, 31, 25]), // Naughty
         19 => ([28, 29, 30, 30, 0, 30], [31, 31, 31, 31, 31, 31]), // Rash
-        any => panic!("Invalid Nature: {}", any),
+        any => return Err(SearchError::UnsupportedNature(any)),
     };
 
+    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
     let params = GpuInputParams::new(config, [0, 23], [0, 59], [0, 59], 16, iv_min, iv_max);
     let iv_cfgs = [
         GpuIvConfig {
@@ -171,64 +167,29 @@ async fn tepig_search_by_dates(
         },
     ];
 
-    let mut date_batch = Vec::with_capacity(batch_size);
-    for &date in dates {
-        date_batch.push(date);
-        if date_batch.len() < batch_size {
-            continue;
-        }
-        let base_results = match run_result_base_seedhigh_by_dates_multi_iv(
-            &ctx,
-            config,
-            &params,
-            &date_batch,
-            batch_size,
-            &iv_cfgs,
-        )
-        .await
-        {
-            Ok(v) => v,
-            Err(_) => {
-                date_batch.clear();
-                continue;
-            }
-        };
-        if let Some(handle) = pending_cpu.take() {
-            let batch_results = handle.join().expect("CPU worker thread panicked");
-            merge_results(batch_results, &mut results, &mut seen_seed0);
-        }
-        let nat_clone = nat.clone();
-        pending_cpu = Some(thread::spawn(move || {
-            process_base_results(base_results, mode, nat_clone, find_grotto)
-        }));
-        date_batch.clear();
-    }
-    if !date_batch.is_empty() {
+    for date_batch in dates.chunks(batch_size) {
         let base_results = run_result_base_seedhigh_by_dates_multi_iv(
-            &ctx,
-            config,
-            &params,
-            &date_batch,
-            batch_size,
-            &iv_cfgs,
+            &ctx, config, &params, date_batch, batch_size, &iv_cfgs,
         )
-        .await
-        .unwrap_or_default();
+        .await;
         if let Some(handle) = pending_cpu.take() {
-            let batch_results = handle.join().expect("CPU worker thread panicked");
+            let batch_results = handle.join().map_err(|_| SearchError::WorkerPanicked)?;
             merge_results(batch_results, &mut results, &mut seen_seed0);
         }
+        let base_results = base_results?;
         let nat_clone = nat.clone();
-        pending_cpu = Some(thread::spawn(move || {
-            process_base_results(base_results, mode, nat_clone, find_grotto)
-        }));
+        pending_cpu = Some(
+            thread::Builder::new()
+                .spawn(move || process_base_results(base_results, mode, nat_clone, find_grotto))
+                .map_err(SearchError::WorkerStart)?,
+        );
     }
     if let Some(handle) = pending_cpu.take() {
-        let batch_results = handle.join().expect("CPU worker thread panicked");
+        let batch_results = handle.join().map_err(|_| SearchError::WorkerPanicked)?;
         merge_results(batch_results, &mut results, &mut seen_seed0);
     }
 
-    results
+    Ok(results)
 }
 
 fn merge_results(
@@ -323,12 +284,12 @@ fn process_base_results(
             Some(TepigSearchResult {
                 seed0,
                 seed1,
-                year: base.game_time.year,
-                month: base.game_time.month,
-                day: base.game_time.day,
-                hour: base.game_time.hour,
-                minute: base.game_time.minute,
-                second: base.game_time.second,
+                year: base.game_time.year(),
+                month: base.game_time.month(),
+                day: base.game_time.day(),
+                hour: base.game_time.hour(),
+                minute: base.game_time.minute(),
+                second: base.game_time.second(),
                 tid,
                 key_presses: base.key_presses.pressed_keys_string(),
                 ivs,
@@ -478,6 +439,42 @@ mod tests {
     use std::time::Instant;
 
     #[test]
+    fn rejects_invalid_conditions_before_gpu_setup() {
+        let config = DSConfig::new(
+            rng_core::models::GameVersion::White2,
+            rng_core::models::Region::JPN,
+            0x10fa,
+            false,
+            0x0009bf6d93ce,
+        );
+        let search = |year, month, day, nature| {
+            pollster::block_on(white2_tepig_search(
+                config,
+                year,
+                month,
+                day,
+                Nature::new(nature),
+                BW2Mode::Normal,
+                W256,
+            ))
+        };
+        for (year, month, day) in [(100, 1, 1), (0, 0, 1), (0, 13, 1), (0, 1, 0), (0, 4, 31)] {
+            assert!(matches!(
+                search(year, month, day, 4),
+                Err(SearchError::InvalidDateTime(_))
+            ));
+        }
+        assert!(matches!(
+            search(0, 6, 1, 4),
+            Err(SearchError::SummerMonth(6))
+        ));
+        assert!(matches!(
+            search(0, 3, 1, 25),
+            Err(SearchError::UnsupportedNature(25))
+        ));
+    }
+
+    #[test]
     #[ignore]
     fn test_white2_tepig_single_date() {
         let ds_config = DSConfig {
@@ -491,7 +488,8 @@ mod tests {
         let start = Instant::now();
         let results = pollster::block_on(async {
             white2_tepig_search(ds_config, 33, 8, 27, Nature::new(4), BW2Mode::Normal, W256).await // 例: Rash
-        });
+        })
+        .expect("search failed");
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);
@@ -514,7 +512,8 @@ mod tests {
         let start = Instant::now();
         let results = pollster::block_on(async {
             white2_tepig_dragonite_search(ds_config, Nature::new(4), BW2Mode::Normal, W256).await // 例: Naughty
-        });
+        })
+        .expect("search failed");
         let elapsed = start.elapsed();
 
         println!("Elapsed: {:?}", elapsed);
