@@ -15,6 +15,8 @@ use rng_core::lcg::{Lcg, OffsetType};
 use rng_core::models::DSConfig;
 use rng_core::models::game_date::{GameDate, build_date_except_summer};
 
+pub use crate::bw2_mode::BW2Mode;
+
 #[derive(Debug, Clone)]
 pub struct TepigSearchResult {
     pub seed0: u64,
@@ -33,12 +35,6 @@ pub struct TepigSearchResult {
     pub candy_frames: Vec<(u32, Grottos)>,
     pub pidove_frames: Vec<(u32, WildPoke)>,
     pub psyduck_frames: Vec<(u32, WildPoke)>,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum BW2Mode {
-    Normal,
-    Challenge,
 }
 
 const FRAME_ENTERING_ROUTE20: u64 = 430;
