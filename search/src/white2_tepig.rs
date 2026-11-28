@@ -1,4 +1,4 @@
-use crate::SearchError;
+use crate::{SearchError, SearchRuntime};
 use std::collections::HashSet;
 use std::thread;
 
@@ -102,6 +102,7 @@ pub async fn white2_tepig_dragonite_search(
         mode,
         workgroup_size,
         find_grotto_advances_candy_dragonite,
+        None,
     )
     .await
 }
@@ -139,6 +140,21 @@ pub struct TepigSearchRequest {
 impl TepigSearchRequest {
     /// Returns matching seeds, or the input, GPU or worker error that stopped the search.
     pub async fn run(self) -> Result<Vec<TepigSearchResult>, SearchError> {
+        self.run_using(None).await
+    }
+
+    /// Runs the search using a previously initialized GPU device and queue.
+    pub async fn run_with_runtime(
+        self,
+        runtime: &SearchRuntime,
+    ) -> Result<Vec<TepigSearchResult>, SearchError> {
+        self.run_using(Some(runtime)).await
+    }
+
+    async fn run_using(
+        self,
+        runtime: Option<&SearchRuntime>,
+    ) -> Result<Vec<TepigSearchResult>, SearchError> {
         let month = self.date.month();
         if month % 4 == 2 {
             return Err(SearchError::SummerMonth(month));
@@ -150,6 +166,7 @@ impl TepigSearchRequest {
             self.mode,
             self.workgroup_size,
             find_grotto_advances_candy,
+            runtime,
         )
         .await
     }
@@ -162,6 +179,7 @@ async fn tepig_search_by_dates(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
     find_grotto: fn(u64, u64, u64) -> Vec<(u32, Grottos)>,
+    runtime: Option<&SearchRuntime>,
 ) -> Result<Vec<TepigSearchResult>, SearchError> {
     let batch_size = BATCH_DATES;
     let mut results = Vec::new();
@@ -174,7 +192,10 @@ async fn tepig_search_by_dates(
         any => return Err(SearchError::UnsupportedNature(any)),
     };
 
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
+    let ctx = match runtime {
+        Some(runtime) => runtime.context(workgroup_size)?,
+        None => GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?,
+    };
     let params = GpuInputParams::new(config, [0, 23], [0, 59], [0, 59], 16, iv_min, iv_max);
     let iv_cfgs = [
         GpuIvConfig {
