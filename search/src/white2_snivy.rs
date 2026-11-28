@@ -14,8 +14,6 @@ use rng_core::lcg::{Lcg, OffsetType};
 use rng_core::models::DSConfig;
 use rng_core::models::game_date::{GameDate, build_autumn_and_winter};
 
-pub use crate::bw2_mode::BW2Mode;
-
 #[derive(Debug, Clone)]
 pub struct W2SnivySearchResult {
     pub seed0: u64,
@@ -36,6 +34,8 @@ pub struct W2SnivySearchResult {
     pub psyduck_frames: Vec<(u32, WildPoke)>,
     pub patrat_frames: Vec<(u32, WildPoke)>,
 }
+
+pub use crate::bw2_mode::BW2Mode;
 
 const FRAME_ENTERING_ROUTE20: u64 = 430;
 const FRAME_EXITING_ROUTE20: u64 = 510;
