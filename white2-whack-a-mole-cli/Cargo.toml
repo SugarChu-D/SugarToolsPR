@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+rng-gpu = { path = "../rng-gpu" }
 search = { path = "../search" }
 rng-core = { path = "../rng-core" }
 serde = { version = "1", features = ["derive"] }

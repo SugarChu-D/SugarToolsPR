@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+rng-gpu = { path = "../rng-gpu" }
 thiserror = "2"
 rng-core = { path = "../rng-core"}
-infra = { path = "../infra" }
 rayon = "1"
 
 [dev-dependencies]

@@ -34,3 +34,13 @@ mac = 0x0009bf6d93ce
 ## リリースの仕方
 
 `cargo build -p [アプリ名] --release`でreleaseフォルダにexeファイルが生成される。
+
+## GPU 実行とクレートの依存関係
+
+`rng-core` は RNG 計算とゲームのデータ型を提供します。`rng-gpu` は
+`rng-core` の型を使い、GPU デバイスの初期化、WGSL カーネル、結果の読み戻しを担当します。
+`search` は両方を利用します。SQLite と CSV は独立した `infra` にあります。
+
+GPU API を直接利用する場合は `rng-gpu` を依存に追加してください。
+旧 `rng_core::gpu::helpers` は `rng_gpu::helpers`、旧 `infra::gpu::context` は
+`rng_gpu::context` です。他の GPU サブモジュールも同様に `rng_gpu` 直下へ移りました。

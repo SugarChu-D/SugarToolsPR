@@ -1,21 +1,21 @@
-use infra::gpu::bind_group_builder::BindGroupBuilder;
-use infra::gpu::buffer_pool::{BufferKind, BufferPool};
-use infra::gpu::encoder_utils::EncoderUtils;
-use infra::gpu::pipeline_factory::PipelineFactory;
-use infra::gpu::readback::Readback;
-use infra::gpu::readback::ReadbackError;
-use infra::gpu::shader_loader::ShaderLoader;
+use crate::bind_group_builder::BindGroupBuilder;
+use crate::buffer_pool::{BufferKind, BufferPool};
+use crate::encoder_utils::EncoderUtils;
+use crate::pipeline_factory::PipelineFactory;
+use crate::readback::Readback;
+use crate::readback::ReadbackError;
+use crate::shader_loader::ShaderLoader;
 use wgpu::util::DeviceExt;
 
-use crate::gpu::bind_layout::{
+use crate::bind_layout::{
     input_list_output_counter_params_layout, input_output_counter_params_layout,
     input_output_layout,
 };
-use crate::gpu::input_layout::{GPUInputIterator, GpuInput, GpuIvConfig};
-use crate::gpu::mt_kernel;
-use crate::gpu::staging_layout::GpuCandidate;
-use crate::models::game_date_iterator::GameDateSpec;
-use crate::models::{DSConfig, KeyPresses};
+use crate::input_layout::{GPUInputIterator, GpuInput, GpuIvConfig};
+use crate::mt_kernel;
+use crate::staging_layout::GpuCandidate;
+use rng_core::models::game_date_iterator::GameDateSpec;
+use rng_core::models::{DSConfig, KeyPresses};
 
 const SHA1_SHADER: &str = concat!(
     include_str!("wgsl/common_types.wgsl"),
@@ -56,7 +56,7 @@ struct ListDispatchParams {
 }
 
 pub async fn run_sha1(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     input: &[GpuInput],
 ) -> Result<Vec<GpuCandidate>, ReadbackError> {
     if input.is_empty() {
@@ -201,7 +201,7 @@ pub async fn run_sha1(
 }
 
 pub async fn run_sha1_mt(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     input: &[GpuInput],
 ) -> Result<Vec<GpuCandidate>, ReadbackError> {
     if input.is_empty() {
@@ -372,7 +372,7 @@ pub async fn run_sha1_mt(
 }
 
 pub async fn run_sha1_seedhigh_filter(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     input: &[GpuInput],
     seed_high_list: &[u32],
 ) -> Result<Vec<GpuCandidate>, ReadbackError> {
@@ -576,7 +576,7 @@ pub async fn run_sha1_seedhigh_filter(
     reason = "検索リクエスト型の導入までは既存の公開APIを維持する"
 )]
 pub async fn run_sha1_seedhigh_search(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     ds_config: DSConfig,
     datespec: GameDateSpec,
     hour_range: [u32; 2],
@@ -636,20 +636,20 @@ pub async fn run_sha1_seedhigh_search(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::gpu::input_layout::GpuIvConfig;
-    use crate::gpu::mt_kernel;
-    use crate::models::field_range::FieldRange;
-    use crate::models::game_date_iterator::GameDateSpec;
-    use crate::models::{DSConfig, GameVersion};
-    use infra::gpu::context::GpuContext;
+    use crate::context::GpuContext;
+    use crate::input_layout::GpuIvConfig;
+    use crate::mt_kernel;
+    use rng_core::models::field_range::FieldRange;
+    use rng_core::models::game_date_iterator::GameDateSpec;
+    use rng_core::models::{DSConfig, GameVersion};
 
     #[test]
     #[ignore = "requires a GPU and scans the full seed_high range"]
     fn seedhigh_candidates_match_cpu_for_known_seed0() {
-        use crate::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
-        use crate::models::{GameTime, Region};
-        use crate::mt::mt_0;
-        use crate::sha_1::generate_initial_seed0;
+        use crate::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
+        use rng_core::models::{GameTime, Region};
+        use rng_core::mt::mt_0;
+        use rng_core::sha_1::generate_initial_seed0;
 
         // initial_seed0_matches_known_value と同じ日時・DS設定・キー入力。
         let config = DSConfig::new(
@@ -708,7 +708,7 @@ mod tests {
 
             let ds_config = DSConfig::new(
                 GameVersion::White2,
-                crate::models::Region::JPN,
+                rng_core::models::Region::JPN,
                 0x10F7,
                 false,
                 0x0009bf6d93ce,
@@ -774,7 +774,7 @@ mod tests {
             let ctx = GpuContext::new().await.expect("GPU setup failed");
             let ds_config = DSConfig::new(
                 GameVersion::White2,
-                crate::models::Region::JPN,
+                rng_core::models::Region::JPN,
                 0x10f7,
                 false,
                 0x0009bf6d93ce,

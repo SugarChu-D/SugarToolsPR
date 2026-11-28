@@ -4,9 +4,9 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-use rng_core::gpu::workgroup_size::WorkgroupSize;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::game_version::GameVersion;
+use rng_gpu::workgroup_size::WorkgroupSize;
 use search::white2_whack_a_mole::{DrilburSearchResult, drilbur_search};
 use serde::Deserialize;
 

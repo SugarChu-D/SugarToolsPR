@@ -1,17 +1,17 @@
+use crate::bind_group_builder::BindGroupBuilder;
+use crate::buffer_pool::{BufferKind, BufferPool};
+use crate::encoder_utils::EncoderUtils;
+use crate::pipeline_factory::PipelineFactory;
+use crate::readback::Readback;
+use crate::readback::ReadbackError;
+use crate::shader_loader::ShaderLoader;
 use bytemuck;
-use infra::gpu::bind_group_builder::BindGroupBuilder;
-use infra::gpu::buffer_pool::{BufferKind, BufferPool};
-use infra::gpu::encoder_utils::EncoderUtils;
-use infra::gpu::pipeline_factory::PipelineFactory;
-use infra::gpu::readback::Readback;
-use infra::gpu::readback::ReadbackError;
-use infra::gpu::shader_loader::ShaderLoader;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 use wgpu::util::DeviceExt;
 
-use crate::gpu::bind_layout::config_output_counter_params_layout;
-use crate::gpu::input_layout::GpuIvConfig;
+use crate::bind_layout::config_output_counter_params_layout;
+use crate::input_layout::GpuIvConfig;
 
 const MT_SEEDHIGH_SHADER: &str = concat!(
     include_str!("wgsl/common_types.wgsl"),
@@ -38,7 +38,7 @@ struct IvKey {
 static SEED_HIGH_CACHE: OnceLock<Mutex<HashMap<IvKey, Vec<u32>>>> = OnceLock::new();
 
 pub async fn run_mt_seedhigh_candidates(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     config: &GpuIvConfig,
 ) -> Result<Vec<u32>, ReadbackError> {
     let shader = ShaderLoader::from_wgsl(
@@ -166,7 +166,7 @@ pub async fn run_mt_seedhigh_candidates(
 }
 
 pub async fn run_mt_seedhigh_candidates_cached(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     config: &GpuIvConfig,
 ) -> Result<Vec<u32>, ReadbackError> {
     let key = IvKey {
@@ -196,7 +196,7 @@ pub async fn run_mt_seedhigh_candidates_cached(
 }
 
 pub async fn run_mt_seedhigh_candidates_cached_multi(
-    ctx: &infra::gpu::context::GpuContext,
+    ctx: &crate::context::GpuContext,
     configs: &[GpuIvConfig],
 ) -> Result<Vec<u32>, ReadbackError> {
     if configs.is_empty() {
@@ -221,7 +221,7 @@ pub async fn run_mt_seedhigh_candidates_cached_multi(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use infra::gpu::context::GpuContext;
+    use crate::context::GpuContext;
 
     #[test]
     #[ignore = "requires a GPU and benchmarks the full seed_high search"]

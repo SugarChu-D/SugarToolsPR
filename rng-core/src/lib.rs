@@ -1,4 +1,3 @@
-pub mod gpu;
 pub mod initial_seed;
 pub mod lcg;
 pub mod models;

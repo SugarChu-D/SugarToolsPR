@@ -1,6 +1,6 @@
-use crate::models::GameTime;
-use crate::models::date_time_error::DateTimeError;
 use bytemuck::{Pod, Zeroable};
+use rng_core::models::GameTime;
+use rng_core::models::date_time_error::DateTimeError;
 
 #[derive(Clone, Copy, Pod, Zeroable)]
 #[repr(C)]

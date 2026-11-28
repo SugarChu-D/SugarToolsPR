@@ -1,4 +1,4 @@
-use crate::models::{
+use rng_core::models::{
     DSConfig,
     game_date_iterator::{GameDateIterator, GameDateSpec},
 };
@@ -158,15 +158,15 @@ impl GPUInputIterator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::field_range::FieldRange;
-    use crate::models::game_date_iterator::GameDateSpec;
-    use crate::models::game_version::GameVersion;
+    use rng_core::models::field_range::FieldRange;
+    use rng_core::models::game_date_iterator::GameDateSpec;
+    use rng_core::models::game_version::GameVersion;
 
     #[test]
     fn test_gpu_input_iterator_next_batch() {
         let ds_config = DSConfig::new(
             GameVersion::White2,
-            crate::models::Region::JPN,
+            rng_core::models::Region::JPN,
             0x10F7,
             false,
             0x0009bf6d93ce,
