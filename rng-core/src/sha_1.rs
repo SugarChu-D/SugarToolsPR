@@ -108,11 +108,7 @@ pub fn generate_initial_seed1(
     key_presses: KeyPresses,
 ) -> u64 {
     let seed0 = generate_initial_seed0(config, game_time, key_presses);
-    // LCGでseed1を生成
-    let seed1 = lcg_next(seed0);
-    #[cfg(debug_assertions)]
-    println!("Generated initial seed1: 0x{:016X}", seed1);
-    seed1
+    lcg_next(seed0)
 }
 
 #[cfg(test)]
