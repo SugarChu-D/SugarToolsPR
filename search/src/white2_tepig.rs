@@ -115,20 +115,44 @@ pub async fn white2_tepig_search(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
 ) -> Result<Vec<TepigSearchResult>, SearchError> {
-    let date = GameDate::try_new(year, month, day)?;
-    if month % 4 == 2 {
-        return Err(SearchError::SummerMonth(month));
-    }
-    let dates = [date];
-    tepig_search_by_dates(
+    TepigSearchRequest {
         config,
-        nat,
-        &dates,
+        date: GameDate::try_new(year, month, day)?,
+        nature: nat,
         mode,
         workgroup_size,
-        find_grotto_advances_candy,
-    )
+    }
+    .run()
     .await
+}
+
+/// Inputs for the single-date White 2 Tepig search.
+#[derive(Debug, Clone)]
+pub struct TepigSearchRequest {
+    pub config: DSConfig,
+    pub date: GameDate,
+    pub nature: Nature,
+    pub mode: BW2Mode,
+    pub workgroup_size: WorkgroupSize,
+}
+
+impl TepigSearchRequest {
+    /// Returns matching seeds, or the input, GPU or worker error that stopped the search.
+    pub async fn run(self) -> Result<Vec<TepigSearchResult>, SearchError> {
+        let month = self.date.month();
+        if month % 4 == 2 {
+            return Err(SearchError::SummerMonth(month));
+        }
+        tepig_search_by_dates(
+            self.config,
+            self.nature,
+            &[self.date],
+            self.mode,
+            self.workgroup_size,
+            find_grotto_advances_candy,
+        )
+        .await
+    }
 }
 
 async fn tepig_search_by_dates(

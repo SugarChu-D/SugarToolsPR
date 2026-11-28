@@ -8,11 +8,10 @@ use rng_core::gpu::workgroup_size::WorkgroupSize;
 use rng_core::lcg::nature::Nature;
 use rng_core::lcg::tid_impl::get_frigate_pass;
 use rng_core::models::ds_config::DSConfig;
+use rng_core::models::game_date::GameDate;
 use rng_core::models::game_version::GameVersion;
 
-use search::white2_tepig::BW2Mode;
-use search::white2_tepig::TepigSearchResult;
-use search::white2_tepig::white2_tepig_search;
+use search::white2_tepig::{BW2Mode, TepigSearchRequest, TepigSearchResult};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -55,9 +54,14 @@ fn run() -> Result<(), Box<dyn Error>> {
     let (year, month, day) = prompt_date()?;
     let workgroup_size = WorkgroupSize::try_from_u32(workgroup_size_opt.unwrap_or(256))
         .map_err(|e| -> Box<dyn Error> { e.into() })?;
-    let results = pollster::block_on(async {
-        white2_tepig_search(ds_config, year, month, day, nature, mode, workgroup_size).await
-    })?;
+    let request = TepigSearchRequest {
+        config: ds_config,
+        date: GameDate::try_new(year, month, day)?,
+        nature,
+        mode,
+        workgroup_size,
+    };
+    let results = pollster::block_on(request.run())?;
 
     let output_path = default_output_path();
     let text = build_text(&results);
