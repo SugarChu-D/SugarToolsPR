@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use rng_core::gpu::workgroup_size::WorkgroupSize;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::game_version::GameVersion;
-use search::white2_whack_a_mole::{DrilburSearchResult, drilbur_search};
+use search::white2_whack_a_mole::{DrilburSearchRequest, DrilburSearchResult};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -44,7 +44,11 @@ fn run() -> Result<(), Box<dyn Error>> {
     println!("Workgroup size: {}", workgroup_size.as_u32());
     println!("Searching for Drilbur... ");
 
-    let results = pollster::block_on(async { drilbur_search(ds_config, workgroup_size).await })?;
+    let request = DrilburSearchRequest {
+        config: ds_config,
+        workgroup_size,
+    };
+    let results = pollster::block_on(request.run())?;
 
     let output_path = default_output_path();
     let text = build_output_text(&results);
