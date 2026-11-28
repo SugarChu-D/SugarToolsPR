@@ -14,6 +14,10 @@ cargo +stable test --workspace
 - 乱数処理を変更するときは、既知のseedから得られる値と乱数を消費する順序を確認します。
 - GPU実機が必要なテストや長時間検索は `#[ignore]` で個別に実行します。たとえばCPUとGPUの照合は `cargo test -p rng-core test_sha1_mt_matches_cpu_single_case -- --ignored` で確認できます。
 
+## DSプロファイル
+
+`config.toml` の `[ds_configs.プロファイル名]` にDS設定を書きます。プロファイルが1件の場合、CLIはその設定を自動で使います。複数ある場合は名前順の一覧から使用するプロファイルの番号を入力してください。
+
 ## GPU tuning
 
 `config.toml` のトップレベルに `workgroup_size` を置くと、GPU ごとに compute workgroup size を指定できます。未指定時は `256` です。

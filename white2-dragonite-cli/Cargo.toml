@@ -6,6 +6,4 @@ edition = "2024"
 [dependencies]
 search = { path = "../search" }
 rng-core = { path = "../rng-core" }
-serde = { version = "1", features = ["derive"] }
 pollster = "0.3"
-toml = "0.8"

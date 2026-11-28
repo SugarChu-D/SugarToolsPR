@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::io::{self, Write};
@@ -9,21 +8,14 @@ use rng_core::lcg::nature::Nature;
 use rng_core::lcg::tid_impl::get_frigate_pass;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::game_version::GameVersion;
+use search::profiles::load_profiles;
 use search::white2_tepig::TepigSearchResult;
 use search::white2_tepig::{BW2Mode, white2_tepig_dragonite_search};
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-struct DsConfigFile {
-    ds_configs: HashMap<String, DSConfig>,
-    #[serde(default)]
-    workgroup_size: Option<u32>,
-}
 
 fn main() -> Result<(), Box<dyn Error>> {
     let default_config = default_config_path();
     let config_path = prompt_path("config.toml path", &default_config)?;
-    let (ds_config, workgroup_size_opt) = load_single_profile(&config_path)?;
+    let (ds_config, workgroup_size_opt) = select_profile(&config_path)?;
 
     if ds_config.version != GameVersion::White2 {
         eprintln!(
@@ -47,21 +39,28 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn load_config_file(path: &Path) -> Result<DsConfigFile, Box<dyn Error>> {
-    let text = fs::read_to_string(path)?;
-    let file: DsConfigFile = toml::from_str(&text)?;
-    Ok(file)
-}
-
-fn load_single_profile(path: &Path) -> Result<(DSConfig, Option<u32>), Box<dyn Error>> {
-    let file = load_config_file(path)?;
-    let workgroup_size = file.workgroup_size;
-    let mut iter = file.ds_configs.iter();
-    let (name, cfg) = iter.next().ok_or("no profiles found in config.toml")?;
-    if iter.next().is_some() {
-        eprintln!("warning: multiple profiles found; using '{}'", name);
-    }
-    Ok((*cfg, workgroup_size))
+fn select_profile(path: &Path) -> Result<(DSConfig, Option<u32>), Box<dyn Error>> {
+    let file = load_profiles(path)?;
+    let index = match file.ds_configs.len() {
+        0 => return Err("no profiles found in config.toml".into()),
+        1 => 0,
+        _ => {
+            for (index, name) in file.ds_configs.keys().enumerate() {
+                println!("{}: {:?}", index + 1, name);
+            }
+            prompt("Profile number", "")?
+                .parse::<usize>()
+                .ok()
+                .and_then(|number| number.checked_sub(1))
+                .ok_or("invalid profile number")?
+        }
+    };
+    let config = file
+        .ds_configs
+        .into_values()
+        .nth(index)
+        .ok_or("invalid profile number")?;
+    Ok((config, file.workgroup_size))
 }
 
 fn prompt(label: &str, default: &str) -> Result<String, Box<dyn Error>> {
