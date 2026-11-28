@@ -647,7 +647,7 @@ mod tests {
     #[ignore = "requires a GPU and scans the full seed_high range"]
     fn seedhigh_candidates_match_cpu_for_known_seed0() {
         use crate::gpu::helpers::{GpuInputParams, run_result_base_seedhigh_by_dates};
-        use crate::models::{GameTime, Region, game_date::GameDate};
+        use crate::models::{GameTime, Region};
         use crate::mt::mt_0;
         use crate::sha_1::generate_initial_seed0;
 
@@ -659,7 +659,7 @@ mod tests {
             false,
             0x0009_bf6d_93ce,
         );
-        let time = GameTime::new(63, 10, 1, 18, 39, 19);
+        let time = GameTime::try_new(63, 10, 1, 18, 39, 19).unwrap();
         let known_seed0 = 0x416B_FDD6_B147_33D2;
         let iv_step = 2;
         let target_ivs = mt_0(known_seed0, iv_step);
@@ -676,14 +676,14 @@ mod tests {
         let target = target_ivs.map(u32::from);
         let params = GpuInputParams::new(
             config,
-            [u32::from(time.hour); 2],
-            [u32::from(time.minute); 2],
-            [u32::from(time.second); 2],
+            [u32::from(time.hour()); 2],
+            [u32::from(time.minute()); 2],
+            [u32::from(time.second()); 2],
             u32::from(iv_step),
             target,
             target,
         );
-        let date = GameDate::new(time.year, time.month, time.day);
+        let date = time.date();
         let candidates = pollster::block_on(async {
             let ctx = GpuContext::new().await.expect("GPU setup failed");
             run_result_base_seedhigh_by_dates(&ctx, config, &params, &[date], 1).await

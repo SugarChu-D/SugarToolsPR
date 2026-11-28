@@ -58,8 +58,8 @@ mod tests {
         };
 
         // --- GameTime ダミー ---
-        let t1 = GameTime::new(26, 1, 24, 12, 0, 0);
-        let t2 = GameTime::new(26, 1, 24, 12, 0, 1);
+        let t1 = GameTime::try_new(26, 1, 24, 12, 0, 0).unwrap();
+        let t2 = GameTime::try_new(26, 1, 24, 12, 0, 1).unwrap();
 
         // --- KeyPresses ダミー ---
         let k1 = KeyPresses::new(0x2fff);

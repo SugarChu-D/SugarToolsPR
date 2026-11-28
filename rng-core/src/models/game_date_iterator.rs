@@ -8,73 +8,33 @@ pub struct GameDateSpec {
     pub day: FieldRange<u8>,
 }
 
-/**
- * 検索範囲の最小を定める
- */
 impl GameDateSpec {
-    pub fn start(&self) -> GameDate {
-        GameDate {
-            year: self.year.min,
-            month: self.month.min,
-            day: self.day.min,
-        }
+    pub fn start(self) -> Option<GameDate> {
+        GameDateIterator::new(self).next()
     }
 }
 
-// イテレータ実装
 pub struct GameDateIterator {
-    current: GameDate,
-    spec: GameDateSpec,
-    finished: bool,
-}
-
-impl Iterator for GameDateIterator {
-    type Item = GameDate;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None;
-        }
-
-        let out = self.current;
-        self.advance();
-        Some(out)
-    }
+    dates: Box<dyn Iterator<Item = GameDate> + Send + Sync>,
 }
 
 impl GameDateIterator {
     pub fn new(spec: GameDateSpec) -> Self {
+        let dates = (spec.year.min..=spec.year.max.min(99)).flat_map(move |year| {
+            (spec.month.min.max(1)..=spec.month.max.min(12)).flat_map(move |month| {
+                (spec.day.min.max(1)..=spec.day.max.min(31))
+                    .filter_map(move |day| GameDate::try_new(year, month, day).ok())
+            })
+        });
         Self {
-            current: spec.start(),
-            spec,
-            finished: false,
+            dates: Box::new(dates),
         }
     }
+}
 
-    #[inline]
-    fn advance(&mut self) {
-        // 日
-        self.current.day += 1;
-        let dim = self.current.days_in_month();
-        if self.current.day <= dim && self.spec.day.contains(self.current.day) {
-            return;
-        }
-        self.current.day = self.spec.day.min;
-
-        // 月
-        self.current.month += 1;
-        if self.current.month <= self.spec.month.max {
-            return;
-        }
-        self.current.month = self.spec.month.min;
-
-        // 年
-        self.current.year += 1;
-        if self.current.year <= self.spec.year.max {
-            return;
-        }
-
-        // 完全終了
-        self.finished = true;
+impl Iterator for GameDateIterator {
+    type Item = GameDate;
+    fn next(&mut self) -> Option<GameDate> {
+        self.dates.next()
     }
 }

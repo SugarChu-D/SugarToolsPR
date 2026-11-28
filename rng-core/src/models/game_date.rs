@@ -1,14 +1,31 @@
+use super::date_time_error::DateTimeError;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub struct GameDate {
-    pub year: u8,
-    pub month: u8,
-    pub day: u8,
+    year: u8,
+    month: u8,
+    day: u8,
 }
 
 impl GameDate {
-    pub fn new(year: u8, month: u8, day: u8) -> Self {
-        Self { year, month, day }
+    pub fn try_new(year: u8, month: u8, day: u8) -> Result<Self, DateTimeError> {
+        if year > 99 || !(1..=days_in_month(year, month)).contains(&day) {
+            return Err(DateTimeError::InvalidDate { year, month, day });
+        }
+        Ok(Self { year, month, day })
+    }
+
+    pub fn year(self) -> u8 {
+        self.year
+    }
+
+    pub fn month(self) -> u8 {
+        self.month
+    }
+
+    pub fn day(self) -> u8 {
+        self.day
     }
 
     pub fn weekday(&self) -> u8 {
@@ -27,33 +44,28 @@ impl GameDate {
     }
 
     pub fn days_in_month(&self) -> u8 {
-        match self.month {
-            1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-            4 | 6 | 9 | 11 => 30,
-            2 => {
-                if self.year.is_multiple_of(4) && !self.year.is_multiple_of(100) {
-                    29
-                } else {
-                    28
-                }
-            }
-            _ => 0, // Invalid month
-        }
+        days_in_month(self.year, self.month)
     }
 
-    pub fn add_day(&mut self) {
-        self.day += 1;
-        if self.day > self.days_in_month() {
-            self.day = 1;
-            self.add_month();
+    pub fn add_day(&mut self) -> Result<(), DateTimeError> {
+        if self.day < self.days_in_month() {
+            self.day += 1;
+        } else {
+            *self = self.next_month(1)?;
         }
+        Ok(())
     }
 
-    pub fn add_month(&mut self) {
-        self.month += 1;
-        if self.month > 12 {
-            self.month = 1;
-            self.year += 1;
+    pub fn add_month(&mut self) -> Result<(), DateTimeError> {
+        *self = self.next_month(self.day)?;
+        Ok(())
+    }
+
+    fn next_month(self, day: u8) -> Result<Self, DateTimeError> {
+        if self.month == 12 {
+            Self::try_new(self.year + 1, 1, day)
+        } else {
+            Self::try_new(self.year, self.month + 1, day)
         }
     }
 
@@ -70,6 +82,17 @@ impl GameDate {
     }
 }
 
+// The DS calendar covers 2000..=2099, including the leap year 2000.
+fn days_in_month(year: u8, month: u8) -> u8 {
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 if year.is_multiple_of(4) => 29,
+        2 => 28,
+        _ => 0,
+    }
+}
+
 pub fn build_autumn_and_winter() -> Vec<GameDate> {
     let mut dates = Vec::new();
     for year in 0..=99u8 {
@@ -77,10 +100,7 @@ pub fn build_autumn_and_winter() -> Vec<GameDate> {
             if month % 4 == 2 || month % 4 == 1 {
                 continue;
             }
-            let days = GameDate::new(year, month, 1).days_in_month();
-            if days == 0 {
-                continue;
-            }
+            let days = days_in_month(year, month);
             for day in 1..=days {
                 dates.push(GameDate { year, month, day });
             }
@@ -96,14 +116,48 @@ pub fn build_date_except_summer() -> Vec<GameDate> {
             if month % 4 == 2 {
                 continue;
             }
-            let days = GameDate::new(year, month, 1).days_in_month();
-            if days == 0 {
-                continue;
-            }
+            let days = days_in_month(year, month);
             for day in 1..=days {
                 dates.push(GameDate { year, month, day });
             }
         }
     }
     dates
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_only_dates_in_the_ds_calendar() {
+        for (year, month, day) in [
+            (100, 1, 1),
+            (0, 0, 1),
+            (0, 13, 1),
+            (0, 1, 0),
+            (26, 4, 31),
+            (1, 2, 29),
+        ] {
+            assert_eq!(
+                GameDate::try_new(year, month, day),
+                Err(DateTimeError::InvalidDate { year, month, day })
+            );
+        }
+        for year in [0, 4, 96] {
+            let mut date = GameDate::try_new(year, 2, 28).unwrap();
+            date.add_day().unwrap();
+            assert_eq!(date, GameDate::try_new(year, 2, 29).unwrap());
+            date.add_day().unwrap();
+            assert_eq!(date, GameDate::try_new(year, 3, 1).unwrap());
+        }
+    }
+
+    #[test]
+    fn adding_a_month_rejects_a_missing_day() {
+        let jan = GameDate::try_new(26, 1, 31).unwrap();
+        let mut date = jan;
+        assert!(date.add_month().is_err());
+        assert_eq!(date, jan);
+    }
 }

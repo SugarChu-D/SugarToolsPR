@@ -32,16 +32,16 @@ pub fn plasma_skip_search_spring(
 
     let spec = GameTimeSpec {
         year: FieldRange {
-            min: game_date.year,
-            max: game_date.year,
+            min: game_date.year(),
+            max: game_date.year(),
         },
         month: FieldRange {
-            min: game_date.month,
-            max: game_date.month,
+            min: game_date.month(),
+            max: game_date.month(),
         },
         day: FieldRange {
-            min: game_date.day,
-            max: game_date.day,
+            min: game_date.day(),
+            max: game_date.day(),
         },
         hour: FieldRange { min: 23, max: 23 },
         minute: FieldRange { min: 20, max: 45 },
@@ -267,11 +267,7 @@ mod tests {
             is_dslite: false,
         };
 
-        let game_date = GameDate {
-            year: 95,
-            month: 8,
-            day: 31,
-        };
+        let game_date = GameDate::try_new(95, 8, 31).unwrap();
 
         let results = plasma_skip_search_spring(ds_config, game_date);
         let len = results.len();
@@ -280,9 +276,9 @@ mod tests {
             println!("offset: {}", result.offset);
             println!(
                 "time: {:02}:{:02}:{:02}",
-                result.seed_result_base.game_time.hour,
-                result.seed_result_base.game_time.minute,
-                result.seed_result_base.game_time.second
+                result.seed_result_base.game_time.hour(),
+                result.seed_result_base.game_time.minute(),
+                result.seed_result_base.game_time.second()
             );
             println!(
                 "key presses: {}",

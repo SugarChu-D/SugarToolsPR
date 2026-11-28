@@ -76,11 +76,9 @@ pub async fn drilbur_search(
                 continue; // 夏月は対象外
             }
             for day in GOOD_DATES[month as usize] {
-                dates.push(rng_core::models::game_date::GameDate {
-                    year,
-                    month,
-                    day: *day as u8,
-                });
+                dates.push(rng_core::models::game_date::GameDate::try_new(
+                    year, month, *day as u8,
+                )?);
                 if dates.len() >= batch_size {
                     collect_gpu_results(
                         &ctx,
@@ -160,12 +158,12 @@ async fn collect_gpu_results(
         results.push(DrilburSearchResult {
             seed0,
             seed1,
-            year: game_time.year as u16,
-            month: game_time.month,
-            day: game_time.day,
-            hour: game_time.hour,
-            minute: game_time.minute,
-            second: game_time.second,
+            year: game_time.year() as u16,
+            month: game_time.month(),
+            day: game_time.day(),
+            hour: game_time.hour(),
+            minute: game_time.minute(),
+            second: game_time.second(),
             key_presses,
             ivs,
             cloud_advances,

@@ -1,3 +1,4 @@
+pub mod date_time_error;
 pub mod ds_config;
 pub use ds_config::*;
 pub mod game_version;

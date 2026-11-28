@@ -1,105 +1,122 @@
+use super::{date_time_error::DateTimeError, game_date::GameDate};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameTime {
-    pub year: u8,
-    pub month: u8,
-    pub day: u8,
-    pub hour: u8,
-    pub minute: u8,
-    pub second: u8,
+    date: GameDate,
+    hour: u8,
+    minute: u8,
+    second: u8,
 }
 
 impl GameTime {
-    pub fn new(year: u8, month: u8, day: u8, hour: u8, minute: u8, second: u8) -> Self {
-        Self {
-            year,
-            month,
-            day,
+    pub fn try_new(
+        year: u8,
+        month: u8,
+        day: u8,
+        hour: u8,
+        minute: u8,
+        second: u8,
+    ) -> Result<Self, DateTimeError> {
+        Self::from_date(GameDate::try_new(year, month, day)?, hour, minute, second)
+    }
+
+    pub fn from_date(
+        date: GameDate,
+        hour: u8,
+        minute: u8,
+        second: u8,
+    ) -> Result<Self, DateTimeError> {
+        if hour > 23 || minute > 59 || second > 59 {
+            return Err(DateTimeError::InvalidTime {
+                hour,
+                minute,
+                second,
+            });
+        }
+        Ok(Self {
+            date,
             hour,
             minute,
             second,
-        }
+        })
     }
 
-    pub fn weekday(&self) -> u8 {
-        // Zeller's Congruence algorithm to calculate the day of the week
-        let mut m = self.month as i32;
-        let mut y = self.year as i32;
-
-        if m < 3 {
-            m += 12;
-            y = if y == 0 { 94 } else { y - 1 }; // Adjust for year wrap-around
-        }
-
-        let weekday = (self.day as i32 + ((13 * m + 8) / 5) + y + (y >> 2)) % 7;
-
-        weekday as u8 // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    pub fn date(self) -> GameDate {
+        self.date
     }
 
-    pub fn days_in_month(&self) -> u8 {
-        match self.month {
-            1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-            4 | 6 | 9 | 11 => 30,
-            2 => {
-                if self.year.is_multiple_of(4) && !self.year.is_multiple_of(100) {
-                    29
-                } else {
-                    28
-                }
-            }
-            _ => 0, // Invalid month
-        }
+    pub fn year(self) -> u8 {
+        self.date.year()
     }
 
-    pub fn add_second(&mut self) {
-        self.second += 1;
-        if self.second >= 60 {
+    pub fn month(self) -> u8 {
+        self.date.month()
+    }
+
+    pub fn day(self) -> u8 {
+        self.date.day()
+    }
+
+    pub fn weekday(self) -> u8 {
+        self.date.weekday()
+    }
+
+    pub fn days_in_month(self) -> u8 {
+        self.date.days_in_month()
+    }
+
+    pub fn get_date8_format(self) -> u32 {
+        self.date.get_date8_format()
+    }
+
+    pub fn hour(self) -> u8 {
+        self.hour
+    }
+
+    pub fn minute(self) -> u8 {
+        self.minute
+    }
+
+    pub fn second(self) -> u8 {
+        self.second
+    }
+
+    pub fn add_second(&mut self) -> Result<(), DateTimeError> {
+        if self.second == 59 {
+            self.add_minute()?;
             self.second = 0;
-            self.add_minute();
+        } else {
+            self.second += 1;
         }
+        Ok(())
     }
 
-    pub fn add_minute(&mut self) {
-        self.minute += 1;
-        if self.minute >= 60 {
+    pub fn add_minute(&mut self) -> Result<(), DateTimeError> {
+        if self.minute == 59 {
+            self.add_hour()?;
             self.minute = 0;
-            self.add_hour();
+        } else {
+            self.minute += 1;
         }
+        Ok(())
     }
 
-    pub fn add_hour(&mut self) {
-        self.hour += 1;
-        if self.hour >= 24 {
+    pub fn add_hour(&mut self) -> Result<(), DateTimeError> {
+        if self.hour == 23 {
+            self.add_day()?;
             self.hour = 0;
-            self.add_day();
+        } else {
+            self.hour += 1;
         }
+        Ok(())
     }
 
-    pub fn add_day(&mut self) {
-        self.day += 1;
-        if self.day > self.days_in_month() {
-            self.day = 1;
-            self.add_month();
-        }
+    pub fn add_day(&mut self) -> Result<(), DateTimeError> {
+        self.date.add_day()
     }
 
-    pub fn add_month(&mut self) {
-        self.month += 1;
-        if self.month > 12 {
-            self.month = 1;
-            self.year += 1;
-        }
-    }
-
-    pub fn get_date8_format(&self) -> u32 {
-        // 10進数を16進数に変換する処理を直接ビット演算で行う
-        let hex_year = ((self.year / 10) << 4) | (self.year % 10);
-        let hex_month = ((self.month / 10) << 4) | (self.month % 10);
-        let hex_day = ((self.day / 10) << 4) | (self.day % 10);
-
-        ((hex_year as u32) << 24)
-            | ((hex_month as u32) << 16)
-            | ((hex_day as u32) << 8)
-            | self.weekday() as u32
+    pub fn add_month(&mut self) -> Result<(), DateTimeError> {
+        self.date.add_month()
     }
 
     pub fn get_time9_format(&self) -> u32 {
@@ -125,9 +142,34 @@ mod tests {
 
     #[test]
     fn test_game_date() {
-        let date = GameTime::new(26, 1, 24, 23, 59, 59);
+        let date = GameTime::try_new(26, 1, 24, 23, 59, 59).unwrap();
         assert_eq!(date.weekday(), 6); // Saturday
         assert_eq!(date.get_date8_format(), 0x26012406);
-        assert_eq!(date.year, 26);
+        assert_eq!(date.year(), 26);
+    }
+
+    #[test]
+    fn rejects_invalid_clock_fields() {
+        for (hour, minute, second) in [(24, 0, 0), (0, 60, 0), (0, 0, 60)] {
+            assert_eq!(
+                GameTime::try_new(26, 1, 1, hour, minute, second),
+                Err(DateTimeError::InvalidTime {
+                    hour,
+                    minute,
+                    second
+                })
+            );
+        }
+    }
+
+    #[test]
+    fn carries_across_midnight_and_preserves_the_last_instant_on_overflow() {
+        let mut time = GameTime::try_new(98, 12, 31, 23, 59, 59).unwrap();
+        time.add_second().unwrap();
+        assert_eq!(time, GameTime::try_new(99, 1, 1, 0, 0, 0).unwrap());
+        let last = GameTime::try_new(99, 12, 31, 23, 59, 59).unwrap();
+        let mut time = last;
+        assert!(time.add_second().is_err());
+        assert_eq!(time, last);
     }
 }

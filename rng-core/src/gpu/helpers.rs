@@ -1,3 +1,4 @@
+use super::error::GpuResultError;
 use crate::gpu::input_layout::{GpuInput, GpuIvConfig};
 use crate::gpu::mt_kernel;
 use crate::gpu::sha1_kernel;
@@ -115,13 +116,9 @@ pub async fn run_result_base_by_dates(
     params: &GpuInputParams,
     dates: &[GameDate],
     batch_size: usize,
-) -> Result<Vec<ResultBase>, ReadbackError> {
+) -> Result<Vec<ResultBase>, GpuResultError> {
     let candidates = run_sha1_mt_by_dates(ctx, params, dates, batch_size).await?;
-    Ok(build_result_base_from_candidates(
-        ds_config,
-        candidates,
-        params.iv_step,
-    ))
+    build_result_base_from_candidates(ds_config, candidates, params.iv_step)
 }
 
 pub async fn run_result_base_seedhigh_by_dates(
@@ -130,7 +127,7 @@ pub async fn run_result_base_seedhigh_by_dates(
     params: &GpuInputParams,
     dates: &[GameDate],
     batch_size: usize,
-) -> Result<Vec<ResultBase>, ReadbackError> {
+) -> Result<Vec<ResultBase>, GpuResultError> {
     if dates.is_empty() {
         return Ok(Vec::new());
     }
@@ -157,7 +154,7 @@ pub async fn run_result_base_seedhigh_by_dates(
                 ds_config,
                 chunk,
                 params.iv_step,
-            ));
+            )?);
             inputs.clear();
         }
     }
@@ -167,7 +164,7 @@ pub async fn run_result_base_seedhigh_by_dates(
             ds_config,
             chunk,
             params.iv_step,
-        ));
+        )?);
     }
 
     Ok(results)
@@ -180,7 +177,7 @@ pub async fn run_result_base_seedhigh_by_dates_multi_iv(
     dates: &[GameDate],
     batch_size: usize,
     iv_cfgs: &[GpuIvConfig],
-) -> Result<Vec<ResultBase>, ReadbackError> {
+) -> Result<Vec<ResultBase>, GpuResultError> {
     if dates.is_empty() {
         return Ok(Vec::new());
     }
@@ -204,7 +201,7 @@ pub async fn run_result_base_seedhigh_by_dates_multi_iv(
                 ds_config,
                 chunk,
                 params.iv_step,
-            ));
+            )?);
             inputs.clear();
         }
     }
@@ -214,7 +211,7 @@ pub async fn run_result_base_seedhigh_by_dates_multi_iv(
             ds_config,
             chunk,
             params.iv_step,
-        ));
+        )?);
     }
 
     Ok(results)
@@ -224,7 +221,7 @@ fn build_result_base_from_candidates(
     ds_config: DSConfig,
     candidates: Vec<crate::gpu::staging_layout::GpuCandidate>,
     iv_step: u32,
-) -> Vec<ResultBase> {
+) -> Result<Vec<ResultBase>, GpuResultError> {
     let mut results = Vec::with_capacity(candidates.len());
     for cand in candidates {
         let raw_kp = cand.key_presses as u16;
@@ -232,7 +229,7 @@ fn build_result_base_from_candidates(
             continue;
         }
 
-        let game_time = candidate_game_time(&cand);
+        let game_time = candidate_game_time(&cand)?;
         let seed0 = cand.seed0;
         let seed1 = lcg_next(seed0);
         let ivs: [u8; 6] = mt::mt_1(seed1, (iv_step & 0xFF) as u8);
@@ -247,5 +244,5 @@ fn build_result_base_from_candidates(
         });
     }
 
-    results
+    Ok(results)
 }

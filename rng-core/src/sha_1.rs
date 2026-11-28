@@ -65,7 +65,7 @@ pub fn generate_initial_seed0(
     let data8 = game_time.get_date8_format();
     // #[cfg(debug_assertions)]
     // println!("data8 (date): 0x{:08X} (year:{} month:{} day:{} weekday:{})",
-    //     data8, game_time.year, game_time.month, game_time.day, game_time.weekday());
+    //     data8, game_time.year(), game_time.month(), game_time.day(), game_time.weekday());
     hasher.update(data8.to_be_bytes());
 
     // data[9] に対応
@@ -73,7 +73,7 @@ pub fn generate_initial_seed0(
     let time9 = game_time.get_time9_format();
     // #[cfg(debug_assertions)]
     // println!("data9 (time): 0x{:08X} (hour:{} minute:{} second:{})",
-    //     time9, game_time.hour, game_time.minute, game_time.second);
+    //     time9, game_time.hour(), game_time.minute(), game_time.second());
     hasher.update(time9.to_be_bytes());
 
     // data[10]とdata[11]は0で固定
@@ -129,7 +129,7 @@ mod tests {
             mac_address: 0x0009_bf6d_93ce,
             is_dslite: false,
         };
-        let game_time = GameTime::new(63, 10, 1, 18, 39, 19);
+        let game_time = GameTime::try_new(63, 10, 1, 18, 39, 19).unwrap();
         let key_presses = KeyPresses::new(0x2fff);
         let expected_seed0 = 0x416BFDD6B14733D2;
 

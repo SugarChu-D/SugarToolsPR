@@ -48,7 +48,7 @@ pub async fn pup_search(
     let mut dates = Vec::with_capacity(batch_size);
     for &(month, day) in &TARGET_DATES {
         for year in 0..=99u8 {
-            dates.push(GameDate { year, month, day });
+            dates.push(GameDate::try_new(year, month, day)?);
             if dates.len() >= batch_size {
                 collect_gpu_results(
                     &ctx,
@@ -115,13 +115,13 @@ pub async fn sawk_search(
 
     for temp_month in 1..=3 {
         let month = temp_month * 4;
-        for day in 1..=31 {
+        for day in 1..=GameDate::try_new(0, month, 1)?.days_in_month() {
             // let temp_date = (month, day);
             // let is_not_hail_date = !HAIL_DATES.contains(&temp_date);
             let is_not_hail_date = true;
             if is_not_hail_date {
                 for year in 0..=99u8 {
-                    dates.push(GameDate { year, month, day });
+                    dates.push(GameDate::try_new(year, month, day)?);
                     if dates.len() >= batch_size {
                         collect_gpu_results(
                             &ctx,
@@ -201,12 +201,12 @@ async fn collect_gpu_results(
         results.push(PupSearchResult {
             seed0,
             seed1,
-            year: game_time.year as u16,
-            month: game_time.month,
-            day: game_time.day,
-            hour: game_time.hour,
-            minute: game_time.minute,
-            second: game_time.second,
+            year: game_time.year() as u16,
+            month: game_time.month(),
+            day: game_time.day(),
+            hour: game_time.hour(),
+            minute: game_time.minute(),
+            second: game_time.second(),
             key_presses,
             ivs,
             wild_advances,

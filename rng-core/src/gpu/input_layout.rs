@@ -1,4 +1,7 @@
-use crate::models::{DSConfig, game_date::GameDate, game_date_iterator::GameDateSpec};
+use crate::models::{
+    DSConfig,
+    game_date_iterator::{GameDateIterator, GameDateSpec},
+};
 
 use bytemuck::{Pod, Zeroable};
 
@@ -69,24 +72,20 @@ impl GpuInput {
  */
 pub struct GPUInputIterator {
     ds_config: DSConfig,
-    current_date: GameDate,
-    datespec: GameDateSpec,
+    dates: GameDateIterator,
     hour_range: [u32; 2],
     minute_range: [u32; 2],
     second_range: [u32; 2],
     iv_step: u32,
     iv_min: [u32; 6],
     iv_max: [u32; 6],
-    finished: bool,
 }
 
 impl Iterator for GPUInputIterator {
     type Item = GpuInput;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None;
-        }
+        let date = self.dates.next()?;
 
         let out = GpuInput {
             nazo: [
@@ -104,7 +103,7 @@ impl Iterator for GPUInputIterator {
             } else {
                 0x0600_0008
             },
-            date_as_data8: self.current_date.get_date8_format(),
+            date_as_data8: date.get_date8_format(),
             hour_range: self.hour_range,
             minute_range: self.minute_range,
             second_range: self.second_range,
@@ -113,7 +112,6 @@ impl Iterator for GPUInputIterator {
             iv_min: self.iv_min,
             iv_max: self.iv_max,
         };
-        self.advance();
         Some(out)
     }
 }
@@ -135,15 +133,13 @@ impl GPUInputIterator {
     ) -> Self {
         Self {
             ds_config,
-            current_date: datespec.start(),
-            datespec,
+            dates: GameDateIterator::new(datespec),
             hour_range,
             minute_range,
             second_range,
             iv_step,
             iv_min,
             iv_max,
-            finished: false,
         }
     }
 
@@ -156,33 +152,6 @@ impl GPUInputIterator {
             }
         }
         out
-    }
-
-    #[inline]
-    fn advance(&mut self) {
-        // 日
-        self.current_date.day += 1;
-        let dim = self.current_date.days_in_month();
-        if self.current_date.day <= dim && self.datespec.day.contains(self.current_date.day) {
-            return;
-        }
-        self.current_date.day = self.datespec.day.min;
-
-        // 月
-        self.current_date.month += 1;
-        if self.current_date.month <= self.datespec.month.max {
-            return;
-        }
-        self.current_date.month = self.datespec.month.min;
-
-        // 年
-        self.current_date.year += 1;
-        if self.current_date.year <= self.datespec.year.max {
-            return;
-        }
-
-        // 完全終了
-        self.finished = true;
     }
 }
 

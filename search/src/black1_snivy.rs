@@ -1,10 +1,8 @@
 use rng_core::lcg::Lcg;
 use rng_core::lcg::OffsetType::Bw1Start;
 use rng_core::lcg::nature::Nature;
-use rng_core::models::FieldRange;
 use rng_core::models::GameTime;
 use rng_core::models::ds_config::DSConfig;
-use rng_core::models::game_time_iterator;
 use rng_core::models::key_presses::KeyPresses;
 use rng_core::mt::mt_0;
 
@@ -19,55 +17,14 @@ pub struct SnivySearchResult {
     pub nature: String,
 }
 
-pub fn search_snivy(
-    ds_config: DSConfig,
-    GameTime {
-        hour,
-        minute,
-        second,
-        year,
-        month,
-        day,
-    }: GameTime,
-) -> Vec<SnivySearchResult> {
+pub fn search_snivy(ds_config: DSConfig, game_time: GameTime) -> Vec<SnivySearchResult> {
     let mut results: Vec<SnivySearchResult> = Vec::new();
 
-    let spec = rng_core::models::GameTimeSpec {
-        year: FieldRange {
-            min: year,
-            max: year,
-        },
-        month: FieldRange {
-            min: month,
-            max: month,
-        },
-        day: FieldRange { min: day, max: day },
-        hour: FieldRange {
-            min: hour,
-            max: hour,
-        },
-        minute: FieldRange {
-            min: minute,
-            max: minute,
-        },
-        second: FieldRange {
-            min: second,
-            max: second,
-        },
-    };
-
-    let time_iter = game_time_iterator::GameTimeIterator::new(spec);
     let valid_key_presses: Vec<_> = KeyPresses::iter_valid().collect();
 
-    let inner = time_iter
-        .flat_map(|game_time| {
-            valid_key_presses
-                .clone()
-                .into_iter()
-                .map(move |key_presses| (game_time, key_presses))
-        })
-        .collect::<Vec<_>>()
-        .into_iter();
+    let inner = valid_key_presses
+        .into_iter()
+        .map(|key_presses| (game_time, key_presses));
 
     let seed_iter = rng_core::initial_seed::SeedIter {
         config: &ds_config,
@@ -127,14 +84,7 @@ mod tests {
             mac_address: 0x9bf5aa1fc,
         };
 
-        let game_time = GameTime {
-            year: 32,
-            month: 8,
-            day: 31,
-            hour: 13,
-            minute: 29,
-            second: 13,
-        };
+        let game_time = GameTime::try_new(32, 8, 31, 13, 29, 13).unwrap();
 
         let results = search_snivy(ds_config, game_time);
         println!(
@@ -145,9 +95,9 @@ mod tests {
                 "{:016X},{:016X},{:02},{:02},{:02},{:?},{},{},{},{},{},{},{},{:?}",
                 r.seed0,
                 r.seed1,
-                r.game_time.hour,
-                r.game_time.minute,
-                r.game_time.second,
+                r.game_time.hour(),
+                r.game_time.minute(),
+                r.game_time.second(),
                 r.key_presses.pressed_keys_string(),
                 r.ivs[0],
                 r.ivs[1],

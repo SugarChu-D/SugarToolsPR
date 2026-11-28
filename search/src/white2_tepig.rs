@@ -115,10 +115,7 @@ pub async fn white2_tepig_search(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
 ) -> Result<Vec<TepigSearchResult>, SearchError> {
-    let date = GameDate::new(year, month, day);
-    if year >= 100 || day == 0 || day > date.days_in_month() {
-        return Err(SearchError::InvalidDate { year, month, day });
-    }
+    let date = GameDate::try_new(year, month, day)?;
     if month % 4 == 2 {
         return Err(SearchError::SummerMonth(month));
     }
@@ -287,12 +284,12 @@ fn process_base_results(
             Some(TepigSearchResult {
                 seed0,
                 seed1,
-                year: base.game_time.year,
-                month: base.game_time.month,
-                day: base.game_time.day,
-                hour: base.game_time.hour,
-                minute: base.game_time.minute,
-                second: base.game_time.second,
+                year: base.game_time.year(),
+                month: base.game_time.month(),
+                day: base.game_time.day(),
+                hour: base.game_time.hour(),
+                minute: base.game_time.minute(),
+                second: base.game_time.second(),
                 tid,
                 key_presses: base.key_presses.pressed_keys_string(),
                 ivs,
@@ -464,7 +461,7 @@ mod tests {
         for (year, month, day) in [(100, 1, 1), (0, 0, 1), (0, 13, 1), (0, 1, 0), (0, 4, 31)] {
             assert!(matches!(
                 search(year, month, day, 4),
-                Err(SearchError::InvalidDate { .. })
+                Err(SearchError::InvalidDateTime(_))
             ));
         }
         assert!(matches!(

@@ -1,7 +1,7 @@
 #[derive(Debug, thiserror::Error)]
 pub enum SearchError {
-    #[error("Invalid date {year:02}-{month:02}-{day:02}")]
-    InvalidDate { year: u8, month: u8, day: u8 },
+    #[error(transparent)]
+    InvalidDateTime(#[from] rng_core::models::date_time_error::DateTimeError),
     #[error("Summer month {0} is excluded from this search")]
     SummerMonth(u8),
     #[error("Unsupported Tepig nature {0} (expected Naughty or Rash)")]
@@ -9,7 +9,7 @@ pub enum SearchError {
     #[error(transparent)]
     GpuInitialization(#[from] infra::gpu::context::GpuInitError),
     #[error(transparent)]
-    GpuExecution(#[from] infra::gpu::readback::ReadbackError),
+    GpuExecution(#[from] rng_core::gpu::error::GpuResultError),
     #[error("Failed to start CPU worker: {0}")]
     WorkerStart(#[source] std::io::Error),
     #[error("CPU worker thread panicked")]
