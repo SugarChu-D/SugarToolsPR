@@ -94,16 +94,39 @@ pub async fn white2_tepig_dragonite_search(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
 ) -> Result<Vec<TepigSearchResult>, SearchError> {
-    let dates = build_date_except_summer();
-    tepig_search_by_dates(
+    DragoniteSearchRequest {
         config,
-        nat,
-        &dates,
+        nature: nat,
         mode,
         workgroup_size,
-        find_grotto_advances_candy_dragonite,
-    )
+    }
+    .run()
     .await
+}
+
+/// Inputs for the White 2 Tepig and Dragonite search across all non-summer dates.
+#[derive(Debug, Clone)]
+pub struct DragoniteSearchRequest {
+    pub config: DSConfig,
+    pub nature: Nature,
+    pub mode: BW2Mode,
+    pub workgroup_size: WorkgroupSize,
+}
+
+impl DragoniteSearchRequest {
+    /// Returns matching seeds, or the input, GPU or worker error that stopped the search.
+    pub async fn run(self) -> Result<Vec<TepigSearchResult>, SearchError> {
+        let dates = build_date_except_summer();
+        tepig_search_by_dates(
+            self.config,
+            self.nature,
+            &dates,
+            self.mode,
+            self.workgroup_size,
+            find_grotto_advances_candy_dragonite,
+        )
+        .await
+    }
 }
 
 pub async fn white2_tepig_search(

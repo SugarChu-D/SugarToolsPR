@@ -9,8 +9,7 @@ use rng_core::lcg::nature::Nature;
 use rng_core::lcg::tid_impl::get_frigate_pass;
 use rng_core::models::ds_config::DSConfig;
 use rng_core::models::game_version::GameVersion;
-use search::white2_tepig::TepigSearchResult;
-use search::white2_tepig::{BW2Mode, white2_tepig_dragonite_search};
+use search::white2_tepig::{BW2Mode, DragoniteSearchRequest, TepigSearchResult};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -44,10 +43,13 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     let workgroup_size = WorkgroupSize::try_from_u32(workgroup_size_opt.unwrap_or(256))
         .map_err(|e| -> Box<dyn Error> { e.into() })?;
-    let results = pollster::block_on(async {
-        white2_tepig_dragonite_search(ds_config, Nature::new(4), BW2Mode::Normal, workgroup_size)
-            .await
-    })?;
+    let request = DragoniteSearchRequest {
+        config: ds_config,
+        nature: Nature::new(4),
+        mode: BW2Mode::Normal,
+        workgroup_size,
+    };
+    let results = pollster::block_on(request.run())?;
 
     let output_path = default_output_path();
     let text = build_text(&results);
