@@ -1,6 +1,6 @@
 use crate::models::{
     VersionConfig,
-    game_version::{GameVersion, Region},
+    game_version::{GameVersion, Region, VersionConfigError},
 };
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
@@ -85,6 +85,30 @@ pub struct DSConfig {
     pub mac_address: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DSConfigError {
+    MacAddressOutOfRange(u64),
+    VersionConfig(VersionConfigError),
+}
+
+impl fmt::Display for DSConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MacAddressOutOfRange(mac) => write!(f, "MAC address exceeds 48 bits: {mac:#x}"),
+            Self::VersionConfig(error) => error.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for DSConfigError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::MacAddressOutOfRange(_) => None,
+            Self::VersionConfig(error) => Some(error),
+        }
+    }
+}
+
 impl DSConfig {
     pub fn new(
         version: GameVersion,
@@ -102,6 +126,18 @@ impl DSConfig {
         }
     }
 
+    pub fn validate(&self) -> Result<(), DSConfigError> {
+        self.try_get_version_config().map(|_| ())
+    }
+
+    pub fn try_get_version_config(&self) -> Result<VersionConfig, DSConfigError> {
+        if self.mac_address >= (1 << 48) {
+            return Err(DSConfigError::MacAddressOutOfRange(self.mac_address));
+        }
+        VersionConfig::try_from_version(self.version, self.region)
+            .map_err(DSConfigError::VersionConfig)
+    }
+
     pub fn get_version_config(&self) -> VersionConfig {
         VersionConfig::from_version(self.version, self.region)
     }
@@ -111,6 +147,24 @@ impl DSConfig {
 mod tests {
     use super::*;
     use crate::models::game_version::GameVersion;
+
+    #[test]
+    fn validates_mac_address_width() {
+        let mut config = DSConfig::new(
+            GameVersion::Black,
+            Region::JPN,
+            u16::MAX,
+            false,
+            (1 << 48) - 1,
+        );
+        assert_eq!(config.validate(), Ok(()));
+
+        config.mac_address += 1;
+        assert_eq!(
+            config.validate(),
+            Err(DSConfigError::MacAddressOutOfRange(1 << 48))
+        );
+    }
 
     #[test]
     fn test_deserialize_hex_mac_and_timer() {
