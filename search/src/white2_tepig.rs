@@ -133,16 +133,13 @@ pub async fn white2_tepig_dragonite_search(
     mode: BW2Mode,
     workgroup_size: WorkgroupSize,
 ) -> Result<Vec<TepigSearchResult>, SearchError> {
-    let dates = build_date_except_summer();
-    tepig_search_by_dates(
+    DragoniteSearchRequest {
         config,
-        nat,
-        &dates,
+        nature: nat,
         mode,
         workgroup_size,
-        find_grotto_advances_candy_dragonite,
-        TepigSearchExecution::default(),
-    )
+    }
+    .run()
     .await
 }
 
@@ -157,24 +154,65 @@ pub async fn white2_tepig_dragonite_search_with_control(
     workgroup_size: WorkgroupSize,
     runtime: Option<&SearchRuntime>,
     cancellation: &TepigSearchCancellation,
-    mut on_progress: impl FnMut(TepigSearchProgress) + Send,
+    on_progress: impl FnMut(TepigSearchProgress) + Send,
 ) -> Result<Vec<TepigSearchResult>, SearchError> {
-    check_cancelled(Some(cancellation))?;
-    let dates = build_date_except_summer();
-    tepig_search_by_dates(
+    DragoniteSearchRequest {
         config,
-        nat,
-        &dates,
+        nature: nat,
         mode,
         workgroup_size,
-        find_grotto_advances_candy_dragonite,
-        TepigSearchExecution {
+    }
+    .run_with_control(runtime, cancellation, on_progress)
+    .await
+}
+
+/// Inputs for the White 2 Tepig and Dragonite search across all non-summer dates.
+#[derive(Debug, Clone)]
+pub struct DragoniteSearchRequest {
+    pub config: DSConfig,
+    pub nature: Nature,
+    pub mode: BW2Mode,
+    pub workgroup_size: WorkgroupSize,
+}
+
+impl DragoniteSearchRequest {
+    /// Returns matching seeds, or the input, GPU or worker error that stopped the search.
+    pub async fn run(self) -> Result<Vec<TepigSearchResult>, SearchError> {
+        self.run_using(TepigSearchExecution::default()).await
+    }
+
+    /// Runs the search with cancellation and cumulative batch progress.
+    pub async fn run_with_control(
+        self,
+        runtime: Option<&SearchRuntime>,
+        cancellation: &TepigSearchCancellation,
+        mut on_progress: impl FnMut(TepigSearchProgress) + Send,
+    ) -> Result<Vec<TepigSearchResult>, SearchError> {
+        self.run_using(TepigSearchExecution {
             runtime,
             cancellation: Some(cancellation),
             on_progress: Some(&mut on_progress),
-        },
-    )
-    .await
+        })
+        .await
+    }
+
+    async fn run_using(
+        self,
+        execution: TepigSearchExecution<'_>,
+    ) -> Result<Vec<TepigSearchResult>, SearchError> {
+        check_cancelled(execution.cancellation)?;
+        let dates = build_date_except_summer();
+        tepig_search_by_dates(
+            self.config,
+            self.nature,
+            &dates,
+            self.mode,
+            self.workgroup_size,
+            find_grotto_advances_candy_dragonite,
+            execution,
+        )
+        .await
+    }
 }
 
 pub async fn white2_tepig_search(
