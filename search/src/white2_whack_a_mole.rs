@@ -6,7 +6,7 @@ use rng_core::lcg::OffsetType;
 use rng_core::lcg::cloud_impl::find_cloud_exists_advances;
 use rng_core::lcg::cloud_impl::find_cloud_poke_advances;
 use rng_core::lcg::nature::Nature;
-use rng_core::models::KeyPresses;
+use rng_core::models::{DSConfig, KeyPresses};
 use rng_core::result_base::ResultBase;
 
 static GOOD_DATES: &[&[u32]] = &[
@@ -56,65 +56,88 @@ pub struct DrilburSearchResult {
 const BATCH_DATES: usize = 256;
 
 pub async fn drilbur_search(
-    ds_config: rng_core::models::DSConfig,
+    ds_config: DSConfig,
     workgroup_size: WorkgroupSize,
 ) -> Result<Vec<DrilburSearchResult>, SearchError> {
-    let batch_size = BATCH_DATES;
-    let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
-    let mut results = Vec::new();
-    let mut seen_seed0: std::collections::HashSet<u64> = std::collections::HashSet::new();
+    DrilburSearchRequest {
+        config: ds_config,
+        workgroup_size,
+    }
+    .run()
+    .await
+}
 
-    let iv_min: [u32; 6] = [31, 31, 31, 7, 31, 31];
-    let iv_max: [u32; 6] = [31, 31, 31, 31, 31, 31];
+/// Inputs for the White 2 Drilbur search.
+#[derive(Debug, Clone)]
+pub struct DrilburSearchRequest {
+    pub config: DSConfig,
+    pub workgroup_size: WorkgroupSize,
+}
 
-    let params = GpuInputParams::new(ds_config, [0, 23], [0, 59], [5, 6], 2, iv_min, iv_max);
+impl DrilburSearchRequest {
+    /// Searches the eligible dates and returns matching seeds or the error that stopped the search.
+    pub async fn run(self) -> Result<Vec<DrilburSearchResult>, SearchError> {
+        let Self {
+            config: ds_config,
+            workgroup_size,
+        } = self;
+        let batch_size = BATCH_DATES;
+        let ctx = GpuContext::new_with_workgroup_size(workgroup_size.as_u32()).await?;
+        let mut results = Vec::new();
+        let mut seen_seed0: std::collections::HashSet<u64> = std::collections::HashSet::new();
 
-    let mut dates = Vec::with_capacity(batch_size);
-    for year in 0..=99u8 {
-        for month in 1..=12u8 {
-            if month % 4 == 2 {
-                continue; // 夏月は対象外
-            }
-            for day in GOOD_DATES[month as usize] {
-                dates.push(rng_core::models::game_date::GameDate::try_new(
-                    year, month, *day as u8,
-                )?);
-                if dates.len() >= batch_size {
-                    collect_gpu_results(
-                        &ctx,
-                        ds_config,
-                        &params,
-                        &dates,
-                        &mut results,
-                        &mut seen_seed0,
-                        batch_size,
-                    )
-                    .await?;
-                    dates.clear();
+        let iv_min: [u32; 6] = [31, 31, 31, 7, 31, 31];
+        let iv_max: [u32; 6] = [31, 31, 31, 31, 31, 31];
+
+        let params = GpuInputParams::new(ds_config, [0, 23], [0, 59], [5, 6], 2, iv_min, iv_max);
+
+        let mut dates = Vec::with_capacity(batch_size);
+        for year in 0..=99u8 {
+            for month in 1..=12u8 {
+                if month % 4 == 2 {
+                    continue; // 夏月は対象外
+                }
+                for day in GOOD_DATES[month as usize] {
+                    dates.push(rng_core::models::game_date::GameDate::try_new(
+                        year, month, *day as u8,
+                    )?);
+                    if dates.len() >= batch_size {
+                        collect_gpu_results(
+                            &ctx,
+                            ds_config,
+                            &params,
+                            &dates,
+                            &mut results,
+                            &mut seen_seed0,
+                            batch_size,
+                        )
+                        .await?;
+                        dates.clear();
+                    }
                 }
             }
         }
-    }
 
-    if !dates.is_empty() {
-        collect_gpu_results(
-            &ctx,
-            ds_config,
-            &params,
-            &dates,
-            &mut results,
-            &mut seen_seed0,
-            batch_size,
-        )
-        .await?;
-    }
+        if !dates.is_empty() {
+            collect_gpu_results(
+                &ctx,
+                ds_config,
+                &params,
+                &dates,
+                &mut results,
+                &mut seen_seed0,
+                batch_size,
+            )
+            .await?;
+        }
 
-    Ok(results)
+        Ok(results)
+    }
 }
 
 async fn collect_gpu_results(
     ctx: &GpuContext,
-    ds_config: rng_core::models::DSConfig,
+    ds_config: DSConfig,
     params: &GpuInputParams,
     dates: &[rng_core::models::game_date::GameDate],
     results: &mut Vec<DrilburSearchResult>,
@@ -184,10 +207,7 @@ fn is_target_drilbur(poke: &rng_core::lcg::wild_poke::WildPoke) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use rng_core::{
-        gpu::workgroup_size::WorkgroupSize::W256,
-        models::{DSConfig, GameVersion},
-    };
+    use rng_core::{gpu::workgroup_size::WorkgroupSize::W256, models::GameVersion};
     use std::time::Instant;
 
     use super::*;
