@@ -77,9 +77,40 @@ pub fn find_wild_advances_bw1(
     out
 }
 
+/// Finds matching BW2 encounters at each advance from `start` through `end`.
+/// Frame zero evaluates the initial LCG state.
+pub fn find_wild_advances_bw2(
+    seed0: u64,
+    start: u32,
+    end: u32,
+    is_target: impl Fn(&WildPoke) -> bool,
+) -> Vec<(u32, WildPoke)> {
+    let mut rng = Lcg::new(seed0);
+    rng.advance(u64::from(start));
+    let mut matches = Vec::new();
+    for frame in start..=end {
+        let encounter = rng.get_wild_poke_bw2();
+        if is_target(&encounter) {
+            matches.push((frame, encounter));
+        }
+        rng.next();
+    }
+    matches
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bw2_scan_includes_both_endpoints_and_filters_slots() {
+        // First and last matching Route 20 encounters for the 2033-08-27 Tepig fixture.
+        let frames = find_wild_advances_bw2(0x6f97_208f_419e_56e2, 446, 495, |poke| {
+            matches!(poke.slot, Some(0..20) | Some(80..85))
+        });
+        let actual: Vec<_> = frames.into_iter().map(|(frame, _)| frame).collect();
+        assert_eq!(actual, [446, 479, 482, 495]);
+    }
 
     #[test]
     fn test_get_pup() {

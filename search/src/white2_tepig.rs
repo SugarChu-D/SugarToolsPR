@@ -10,7 +10,7 @@ use rng_core::gpu::input_layout::GpuIvConfig;
 use rng_core::gpu::workgroup_size::WorkgroupSize;
 use rng_core::lcg::grotto::Grottos;
 use rng_core::lcg::nature::Nature;
-use rng_core::lcg::wild_poke::WildPoke;
+use rng_core::lcg::wild_poke::{WildPoke, find_wild_advances_bw2};
 use rng_core::lcg::{Lcg, OffsetType};
 use rng_core::models::DSConfig;
 use rng_core::models::game_date::{GameDate, build_date_except_summer};
@@ -41,10 +41,10 @@ pub enum BW2Mode {
     Challenge,
 }
 
-const FRAME_ENTERING_ROUTE20: u64 = 430;
-const FRAME_EXITING_ROUTE20: u64 = 510;
-const FRAME_ENTERING_RANCH: u64 = 550;
-const FRAME_EXITING_RANCH: u64 = 630;
+const FRAME_ENTERING_ROUTE20: u32 = 430;
+const FRAME_EXITING_ROUTE20: u32 = 510;
+const FRAME_ENTERING_RANCH: u32 = 550;
+const FRAME_EXITING_RANCH: u32 = 630;
 const FRAME_MIN_FOR_CANDY: u64 = 360;
 const FRAME_MAX_FOR_CANDY: u64 = 440;
 
@@ -301,27 +301,6 @@ fn process_base_results(
             })
         })
         .collect()
-}
-
-fn find_wild_advances_bw2(
-    seed0: u64,
-    start: u64,
-    end: u64,
-    is_target: fn(&WildPoke) -> bool,
-) -> Vec<(u32, WildPoke)> {
-    let mut seed = Lcg::new(seed0);
-    if start > 1 {
-        seed.advance(start - 1);
-    }
-    let mut out: Vec<(u32, WildPoke)> = Vec::new();
-    for frame in start..=end {
-        seed.next();
-        let pup = seed.get_wild_poke_bw2();
-        if is_target(&pup) {
-            out.push((frame as u32, pup));
-        }
-    }
-    out
 }
 
 fn is_target_pidove(dov: &WildPoke) -> bool {
