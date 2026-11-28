@@ -769,6 +769,84 @@ mod tests {
     }
 
     #[test]
+    fn known_white2_tepig_candidate_matches_cpu_result() {
+        use rng_core::models::{GameTime, KeyPresses};
+        use rng_core::result_base::ResultBase;
+
+        // Reference day from the full-day GPU test, narrowed to one matching key and second.
+        let config = test_config();
+        let game_time = GameTime::try_new(33, 8, 27, 3, 56, 29).unwrap();
+        let key_presses = KeyPresses::new(0x2696);
+        let seed0 = rng_core::sha_1::generate_initial_seed0(&config, &game_time, key_presses);
+        let seed1 = rng_core::lcg::lcg_next(seed0);
+        let base = ResultBase {
+            ds_config: config,
+            seed0,
+            seed1,
+            game_time,
+            key_presses,
+            ivs: rng_core::mt::mt_1(seed1, 16),
+        };
+        let results = process_base_results(
+            vec![base],
+            BW2Mode::Normal,
+            Nature::new(4),
+            find_grotto_advances_candy,
+            None,
+        );
+        let [result] = results.as_slice() else {
+            panic!("expected precisely one Tepig result, got {}", results.len());
+        };
+
+        assert_eq!(
+            (result.seed0, result.seed1),
+            (0x6f97_208f_419e_56e2, 0x0efb_17c8_584b_d7ed)
+        );
+        assert_eq!(
+            (
+                result.year,
+                result.month,
+                result.day,
+                result.hour,
+                result.minute,
+                result.second
+            ),
+            (33, 8, 27, 3, 56, 29)
+        );
+        assert_eq!(result.key_presses, "[A][Y][↑][←][R][St]");
+        assert_eq!(result.tid, 60050);
+        assert_eq!(
+            (result.tepig_iv_step, result.ivs),
+            (16, [27, 29, 30, 30, 12, 25])
+        );
+        assert_eq!(result.tepig_frames, [259, 271]);
+
+        let wild_frames = |frames: &[(u32, WildPoke)]| {
+            frames
+                .iter()
+                .map(|(frame, poke)| (*frame, poke.nature.as_ref().unwrap().name()))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            wild_frames(&result.pidove_frames),
+            [(446, "Naive"), (479, "Calm"), (482, "Mild"), (495, "Timid")]
+        );
+        assert_eq!(wild_frames(&result.psyduck_frames), [(629, "Gentle")]);
+        let candy_frames: Vec<_> = result
+            .candy_frames
+            .iter()
+            .map(|(frame, grottos)| {
+                let candy = grottos.get(3).unwrap();
+                (*frame, candy.sub_slot(), candy.slot(), candy.gender())
+            })
+            .collect();
+        assert_eq!(
+            candy_frames,
+            [369, 372, 375].map(|frame| (frame, Some(0), Some(60), Some(45)))
+        );
+    }
+
+    #[test]
     fn rejects_invalid_conditions_before_gpu_setup() {
         let config = test_config();
         let search = |year, month, day, nature| {
